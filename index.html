@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="description" content="Feedback Sentinel — AI Agent pipeline: sentiment analysis, topic extraction, urgency scoring, action recommendations, and session logging." />
+  <title>Feedback Sentinel — AI Agent Pipeline</title>
+  <style>
+    /* ==========================================================================
+       1. DESIGN TOKENS
+       ========================================================================== */
+    :root {
+      --color-bg:             #f0f2f5;
+      --color-surface:        #ffffff;
+      --color-surface-2:      #f8f9fa;
+      --color-border:         #dee2e6;
+      --color-border-focus:   #0d6efd;
+      --color-text-primary:   #212529;
+      --color-text-secondary: #6c757d;
+      --color-text-inverse:   #ffffff;
+
+      --color-positive:       #198754;
+      --color-positive-bg:    #d1e7dd;
+      --color-positive-text:  #0a3622;
+      --color-neutral:        #b45309;
+      --color-neutral-bg:     #fef3c7;
+      --color-neutral-text:   #451a03;
+      --color-negative:       #dc3545;
+      --color-negative-bg:    #f8d7da;
+      --color-negative-text:  #58151c;
+
+      --color-urgency-low:    #198754;
+      --color-urgency-med:    #b45309;
+      --color-urgency-high:   #dc3545;
+
+      --color-accent:         #0d6efd;
+      --color-accent-hover:   #0b5ed7;
+      --color-accent-active:  #0a58ca;
+      --color-accent-bg:      #e7f0ff;
+
+      --color-step-done:      #198754;
+      --color-step-active:    #0d6efd;
+      --color-step-idle:      #adb5bd;
+
+      --color-agent-bg:       #0f172a;
+      --color-agent-surface:  #1e293b;
+      --color-agent-border:   #334155;
+      --color-agent-text:     #e2e8f0;
+      --color-agent-accent:   #38bdf8;
+      --color-agent-green:    #4ade80;
+      --color-agent-amber:    #fbbf24;
+      --color-agent-red:      #f87171;
+
+      --font-stack: -apple-system, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+      --font-mono:  ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+      --radius-sm:   4px;
+      --radius:      8px;
+      --radius-lg:   12px;
+      --radius-xl:   16px;
+      --radius-pill: 999px;
+
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+      --shadow:    0 2px 8px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.08);
+
+      --space-xs:  4px;
+      --space-sm:  8px;
+      --space-md:  16px;
+      --space-lg:  24px;
+      --space-xl:  32px;
+      --space-2xl: 48px;
+      --space-3xl: 64px;
+
+      --transition-fast: 0.15s ease;
+      --transition:      0.25s ease;
+      --transition-slow: 0.4s ease;
+    }
+
+    /* ==========================================================================
+       2. RESET & BASE
+       ========================================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-stack);
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--color-text-primary);
+      background: var(--color-bg);
+      min-height: 100vh;
+    }
+
+    h1, h2, h3, h4 { line-height: 1.3; font-weight: 600; color: var(--color-text-primary); }
+    p  { margin: 0; }
+    ul, ol { list-style: none; }
+    img, svg { display: block; max-width: 100%; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    a { color: var(--color-accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ==========================================================================
+       3. SKIP LINK
+       ========================================================================== */
+    .skip-link {
+      position: absolute; top: -100%; left: var(--space-md);
+      background: var(--color-accent); color: var(--color-text-inverse);
+      padding: var(--space-sm) var(--space-md); border-radius: var(--radius);
+      font-weight: 600; z-index: 2000; transition: top var(--transition-fast);
+      text-decoration: none;
+    }
+    .skip-link:focus { top: var(--space-sm); }
+
+    /* ==========================================================================
+       4. STATE-RADIO CONTROLLERS  (must be first in <body>)
+       ========================================================================== */
+    .sr { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+
+    /* ==========================================================================
+       5. HEADER
+       ========================================================================== */
+    .app-header {
+      background: var(--color-agent-bg);
+      border-bottom: 1px solid var(--color-agent-border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-inner {
+      max-width: 1280px; margin: 0 auto;
+      padding: var(--space-md) var(--space-xl);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: var(--space-md); flex-wrap: wrap;
+    }
+    .app-logo {
+      display: flex; align-items: center; gap: var(--space-sm);
+      text-decoration: none; flex-shrink: 0;
+    }
+    .app-logo-icon { width: 34px; height: 34px; flex-shrink: 0; }
+    .app-logo-text {
+      font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em;
+      color: var(--color-agent-text);
+    }
+    .app-logo-text span { color: var(--color-agent-accent); }
+
+    .header-badge {
+      display: inline-flex; align-items: center; gap: var(--space-xs);
+      background: rgba(56,189,248,.15); border: 1px solid rgba(56,189,248,.35);
+      color: var(--color-agent-accent); border-radius: var(--radius-pill);
+      font-size: 0.75rem; font-weight: 700; padding: 3px 10px;
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .pulse-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--color-agent-accent);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .4; transform: scale(.7); }
+    }
+
+    /* ==========================================================================
+       6. PAGE WRAPPER
+       ========================================================================== */
+    .page-wrapper { max-width: 1280px; margin: 0 auto; padding: var(--space-xl) var(--space-xl) var(--space-3xl); }
+
+    /* ==========================================================================
+       7. PIPELINE PROGRESS BAR
+       ========================================================================== */
+    .pipeline-nav {
+      display: flex; align-items: flex-start; gap: 0;
+      margin-bottom: var(--space-xl);
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl); padding: var(--space-md) var(--space-lg);
+      box-shadow: var(--shadow-sm); overflow-x: auto;
+    }
+    .pipeline-step {
+      display: flex; flex-direction: column; align-items: center;
+      gap: var(--space-xs); flex: 1; min-width: 90px; position: relative;
+      cursor: default;
+    }
+    .pipeline-step + .pipeline-step::before {
+      content: ""; position: absolute; top: 14px; right: 50%;
+      width: 100%; height: 2px; background: var(--color-border);
+      transform: translateX(-50%); z-index: 0;
+    }
+    .step-circle {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700; position: relative; z-index: 1;
+      background: var(--color-surface); border: 2px solid var(--color-step-idle);
+      color: var(--color-step-idle); transition: background var(--transition), border-color var(--transition), color var(--transition);
+    }
+    .step-label {
+      font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--color-text-secondary);
+      text-align: center; transition: color var(--transition);
+    }
+
+    /* Step states driven by radio :checked */
+    /* idle → step 0 (default, nothing checked) */
+    /* active states */
+    #step-input:checked    ~ .page-wrapper .pipeline-step[data-step="1"] .step-circle,
+    #step-analyze:checked  ~ .page-wrapper .pipeline-step[data-step="2"] .step-circle,
+    #step-decide:checked   ~ .page-wrapper .pipeline-step[data-step="3"] .step-circle,
+    #step-report:checked   ~ .page-wrapper .pipeline-step[data-step="4"] .step-circle,
+    #step-log:checked      ~ .page-wrapper .pipeline-step[data-step="5"] .step-circle {
+      background: var(--color-step-active); border-color: var(--color-step-active); color: #fff;
+    }
+    #step-input:checked    ~ .page-wrapper .pipeline-step[data-step="1"] .step-label,
+    #step-analyze:checked  ~ .page-wrapper .pipeline-step[data-step="2"] .step-label,
+    #step-decide:checked   ~ .page-wrapper .pipeline-step[data-step="3"] .step-label,
+    #step-report:checked   ~ .page-wrapper .pipeline-step[data-step="4"] .step-label,
+    #step-log:checked      ~ .page-wrapper .pipeline-step[data-step="5"] .step-label {
+      color: var(--color-step-active);
+    }
+    /* completed states — steps before the active one */
+    #step-analyze:checked  ~ .page-wrapper .pipeline-step[data-step="1"] .step-circle,
+    #step-decide:checked   ~ .page-wrapper .pipeline-step[data-step="1"] .step-circle,
+    #step-decide:checked   ~ .page-wrapper .pipeline-step[data-step="2"] .step-circle,
+    #step-report:checked   ~ .page-wrapper .pipeline-step[data-step="1"] .step-circle,
+    #step-report:checked   ~ .page-wrapper .pipeline-step[data-step="2"] .step-circle,
+    #step-report:checked   ~ .page-wrapper .pipeline-step[data-step="3"] .step-circle,
+    #step-log:checked      ~ .page-wrapper .pipeline-step[data-step="1"] .step-circle,
+    #step-log:checked      ~ .page-wrapper .pipeline-step[data-step="2"] .step-circle,
+    #step-log:checked      ~ .page-wrapper .pipeline-step[data-step="3"] .step-circle,
+    #step-log:checked      ~ .page-wrapper .pipeline-step[data-step="4"] .step-circle {
+      background: var(--color-step-done); border-color: var(--color-step-done); color: #fff;
+    }
+    /* connector lines — colour completed connectors */
+    #step-analyze:checked  ~ .page-wrapper .pipeline-step[data-step="2"]::before,
+    #step-decide:checked   ~ .page-wrapper .pipeline-step[data-step="2"]::before,
+    #step-decide:checked   ~ .page-wrapper .pipeline-step[data-step="3"]::before,
+    #step-report:checked   ~ .page-wrapper .pipeline-step[data-step="2"]::before,
+    #step-report:checked   ~ .page-wrapper .pipeline-step[data-step="3"]::before,
+    #step-report:checked   ~ .page-wrapper .pipeline-step[data-step="4"]::before,
+    #step-log:checked      ~ .page-wrapper .pipeline-step[data-step="2"]::before,
+    #step-log:checked      ~ .page-wrapper .pipeline-step[data-step="3"]::before,
+    #step-log:checked      ~ .page-wrapper .pipeline-step[data-step="4"]::before,
+    #step-log:checked      ~ .page-wrapper .pipeline-step[data-step="5"]::before {
+      background: var(--color-step-done);
+    }
+
+    /* ==========================================================================
+       8. STAGE PANELS — only one visible at a time
+       ========================================================================== */
+    .stage { display: none; }
+
+    /* Default: show INPUT stage */
+    .stage-input   { display: block; }
+
+    #step-input:checked   ~ .page-wrapper .stage-input   { display: block; }
+    #step-analyze:checked ~ .page-wrapper .stage-analyze { display: block; }
+    #step-decide:checked  ~ .page-wrapper .stage-decide  { display: block; }
+    #step-report:checked  ~ .page-wrapper .stage-report  { display: block; }
+    #step-log:checked     ~ .page-wrapper .stage-log     { display: block; }
+
+    /* Hide input stage when any later step is active */
+    #step-analyze:checked ~ .page-wrapper .stage-input,
+    #step-decide:checked  ~ .page-wrapper .stage-input,
+    #step-report:checked  ~ .page-wrapper .stage-input,
+    #step-log:checked     ~ .page-wrapper .stage-input { display: none; }
+
+    /* ==========================================================================
+       9. SHARED PANEL CHROME
+       ========================================================================== */
+    .panel {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl); padding: var(--space-lg);
+      box-shadow: var(--shadow-sm);
+    }
+    .panel-header {
+      display: flex; align-items: center; gap: var(--space-sm);
+      margin-bottom: var(--space-lg); padding-bottom: var(--space-md);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .panel-icon { width: 20px; height: 20px; color: var(--color-accent); flex-shrink: 0; }
+    .panel-title { font-size: 1rem; font-weight: 700; }
+    .panel-subtitle { font-size: 0.8125rem; color: var(--color-text-secondary); margin-left: auto; }
+
+    /* agent-dark variant */
+    .panel-dark {
+      background: var(--color-agent-bg); border-color: var(--color-agent-border);
+      color: var(--color-agent-text);
+    }
+    .panel-dark .panel-header { border-bottom-color: var(--color-agent-border); }
+    .panel-dark .panel-title  { color: var(--color-agent-text); }
+    .panel-dark h2, .panel-dark h3 { color: var(--color-agent-text); }
+
+    /* ==========================================================================
+       10. STAGE 1 — INPUT
+       ========================================================================== */
+    .input-layout {
+      display: grid; grid-template-columns: 1fr 340px; gap: var(--space-lg); align-items: start;
+    }
+
+    .batch-selector {
+      margin-bottom: var(--space-lg);
+    }
+    .batch-selector-label {
+      font-size: 0.8125rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--color-text-secondary); margin-bottom: var(--space-sm);
+    }
+    .batch-tabs { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+
+    .batch-tabs input[type="radio"] {
+      position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;
+    }
+    .batch-tabs label {
+      display: inline-flex; align-items: center; gap: var(--space-xs);
+      padding: var(--space-xs) var(--space-md);
+      border: 1.5px solid var(--color-border); border-radius: var(--radius-pill);
+      font-size: 0.875rem; font-weight: 500; color: var(--color-text-secondary);
+      background: var(--color-surface); cursor: pointer;
+      transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+      user-select: none;
+    }
+    .batch-tabs label:hover { border-color: var(--color-accent); color: var(--color-accent); background: var(--color-accent-bg); }
+    .batch-tabs input[type="radio"]:checked + label { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
+    .batch-tabs input[type="radio"]:focus-visible + label { outline: 2px solid var(--color-border-focus); outline-offset: 2px; }
+
+    .feedback-display {
+      width: 100%; min-height: 220px;
+      border: 1px solid var(--color-border); border-radius: var(--radius);
+      padding: var(--space-md); font-size: 0.9rem; line-height: 1.7;
+      background: var(--color-surface-2); color: var(--color-text-primary);
+      font-family: var(--font-mono); resize: vertical;
+    }
+
+    /* Show correct batch text */
+    .batch-text { display: none; }
+    #batch-a:checked ~ .page-wrapper .batch-text-a,
+    #batch-b:checked ~ .page-wrapper .batch-text-b,
+    #batch-c:checked ~ .page-wrapper .batch-text-c { display: block; }
+    /* Default: batch-a */
+    .batch-text-a { display: block; }
+
+    .input-meta {
+      margin-top: var(--space-sm);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 0.8125rem; color: var(--color-text-secondary);
+    }
+    .entry-count {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--color-accent-bg); color: var(--color-accent);
+      border-radius: var(--radius-pill); padding: 2px 10px; font-weight: 700; font-size: 0.8125rem;
+    }
+
+    .btn-run {
+      display: flex; align-items: center; justify-content: center; gap: var(--space-sm);
+      width: 100%; padding: 14px var(--space-lg); margin-top: var(--space-lg);
+      background: var(--color-accent); color: #fff; border: none;
+      border-radius: var(--radius); font-size: 1rem; font-weight: 700; cursor: pointer;
+      transition: background var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+      letter-spacing: 0.01em;
+    }
+    .btn-run:hover  { background: var(--color-accent-hover); box-shadow: 0 4px 16px rgba(13,110,253,.35); }
+    .btn-run:active { background: var(--color-accent-active); transform: translateY(1px); box-shadow: none; }
+    .btn-run:focus-visible { outline: 2px solid var(--color-border-focus); outline-offset: 3px; }
+    .btn-run:focus:not(:focus-visible) { outline: none; }
+
+    /* Info sidebar */
+    .input-info-card {
+      background: var(--color-agent-bg); border: 1px solid var(--color-agent-border);
+      border-radius: var(--radius-xl); padding: var(--space-lg); color: var(--color-agent-text);
+    }
+    .info-card-title {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--color-agent-accent); margin-bottom: var(--space-md);
+    }
+    .pipeline-step-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+    .psl-item {
+      display: flex; align-items: flex-start; gap: var(--space-sm);
+      font-size: 0.8125rem; line-height: 1.5;
+    }
+    .psl-num {
+      width: 20px; height: 20px; border-radius: 50%; background: var(--color-agent-surface);
+      border: 1px solid var(--color-agent-border); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; font-weight: 700; color: var(--color-agent-accent);
+    }
+    .psl-text strong { color: var(--color-agent-accent); }
+    .psl-text { color: #94a3b8; }
+
+    /* ==========================================================================
+       11. STAGE 2 — ANALYZE
+       ========================================================================== */
+    .analyze-header-row {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: var(--space-sm); margin-bottom: var(--space-lg);
+    }
+
+    /* Processing bar animation */
+    .processing-bar-wrap {
+      background: var(--color-surface-2); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); padding: var(--space-md); margin-bottom: var(--space-lg);
+    }
+    .processing-label {
+      font-size: 0.8125rem; font-weight: 600; color: var(--color-text-secondary);
+      margin-bottom: var(--space-sm); display: flex; align-items: center; gap: var(--space-sm);
+    }
+    .processing-bar {
+      height: 8px; background: var(--color-border); border-radius: var(--radius-pill); overflow: hidden;
+    }
+    .processing-fill {
+      height: 100%; border-radius: var(--radius-pill);
+      background: linear-gradient(90deg, var(--color-accent), var(--color-agent-accent));
+      width: 0%;
+      /* Animates when step-analyze is checked */
+    }
+    #step-analyze:checked ~ .page-wrapper .processing-fill {
+      animation: fillBar 1.6s ease forwards;
+    }
+    @keyframes fillBar {
+      0%   { width: 0%; }
+      60%  { width: 85%; }
+      100% { width: 100%; }
+    }
+
+    /* Feedback result rows */
+    .result-rows { display: flex; flex-direction: column; gap: var(--space-sm); }
+
+    .result-row {
+      display: grid;
+      grid-template-columns: 1fr 110px 110px 110px 200px;
+      gap: var(--space-sm); align-items: center;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius); padding: var(--space-sm) var(--space-md);
+      opacity: 0; transform: translateY(10px);
+      font-size: 0.875rem;
+    }
+    #step-analyze:checked ~ .page-wrapper .result-row { animation: rowIn 0.35s ease forwards; }
+    #step-analyze:checked ~ .page-wrapper .result-row:nth-child(1) { animation-delay: 0.3s; }
+    #step-analyze:checked ~ .page-wrapper .result-row:nth-child(2) { animation-delay: 0.55s; }
+    #step-analyze:checked ~ .page-wrapper .result-row:nth-child(3) { animation-delay: 0.8s; }
+    #step-analyze:checked ~ .page-wrapper .result-row:nth-child(4) { animation-delay: 1.05s; }
+    #step-analyze:checked ~ .page-wrapper .result-row:nth-child(5) { animation-delay: 1.3s; }
+    #step-analyze:checked ~ .page-wrapper .result-row:nth-child(6) { animation-delay: 1.55s; }
+
+    @keyframes rowIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-row-header {
+      display: grid;
+      grid-template-columns: 1fr 110px 110px 110px 200px;
+      gap: var(--space-sm);
+      padding: var(--space-xs) var(--space-md);
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--color-text-secondary);
+    }
+
+    .rr-text { color: var(--color-text-primary); line-height: 1.4; }
+    .rr-text span { display: block; font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 2px; }
+
+    /* Sentiment pill */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: var(--radius-pill);
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .badge-positive { background: var(--color-positive-bg); color: var(--color-positive-text); }
+    .badge-positive .badge-dot { background: var(--color-positive); }
+    .badge-neutral  { background: var(--color-neutral-bg);  color: var(--color-neutral-text); }
+    .badge-neutral  .badge-dot { background: var(--color-neutral); }
+    .badge-negative { background: var(--color-negative-bg); color: var(--color-negative-text); }
+    .badge-negative .badge-dot { background: var(--color-negative); }
+
+    /* Urgency pill */
+    .badge-urgency-low  { background: #d1e7dd; color: #0a3622; }
+    .badge-urgency-low  .badge-dot { background: var(--color-urgency-low); }
+    .badge-urgency-med  { background: #fef3c7; color: #451a03; }
+    .badge-urgency-med  .badge-dot { background: var(--color-urgency-med); }
+    .badge-urgency-high { background: #f8d7da; color: #58151c; }
+    .badge-urgency-high .badge-dot { background: var(--color-urgency-high); }
+
+    /* Topic pill */
+    .topic-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--color-surface-2); border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm); padding: 2px 8px;
+      font-size: 0.75rem; font-weight: 600; color: var(--color-text-secondary);
+    }
+
+    /* Batch-specific result tables */
+    .batch-results { display: none; }
+    #batch-a:checked ~ .page-wrapper .batch-results-a { display: block; }
+    #batch-b:checked ~ .page-wrapper .batch-results-b { display: block; }
+    #batch-c:checked ~ .page-wrapper .batch-results-c { display: block; }
+    .batch-results-a { display: block; } /* default */
+
+    /* Nav buttons */
+    .nav-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: var(--space-lg); gap: var(--space-sm); flex-wrap: wrap;
+    }
+    .btn-back, .btn-next {
+      display: inline-flex; align-items: center; gap: var(--space-xs);
+      padding: 10px var(--space-lg); border-radius: var(--radius);
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+      border: 1.5px solid; transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+      user-select: none;
+    }
+    .btn-back { background: var(--color-surface); border-color: var(--color-border); color: var(--color-text-secondary); }
+    .btn-back:hover { border-color: var(--color-accent); color: var(--color-accent); background: var(--color-accent-bg); }
+    .btn-next { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+    .btn-next:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
+    .btn-back:focus-visible, .btn-next:focus-visible { outline: 2px solid var(--color-border-focus); outline-offset: 2px; }
+    .btn-back:focus:not(:focus-visible), .btn-next:focus:not(:focus-visible) { outline: none; }
+
+    /* ==========================================================================
+       12. STAGE 3 — DECIDE
+       ========================================================================== */
+    .decide-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);
+    }
+    .action-card {
+      border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+      padding: var(--space-md); background: var(--color-surface);
+      opacity: 0; transform: translateY(12px);
+    }
+    #step-decide:checked ~ .page-wrapper .action-card { animation: rowIn 0.35s ease forwards; }
+    #step-decide:checked ~ .page-wrapper .action-card:nth-child(1) { animation-delay: 0.1s; }
+    #step-decide:checked ~ .page-wrapper .action-card:nth-child(2) { animation-delay: 0.25s; }
+    #step-decide:checked ~ .page-wrapper .action-card:nth-child(3) { animation-delay: 0.4s; }
+    #step-decide:checked ~ .page-wrapper .action-card:nth-child(4) { animation-delay: 0.55s; }
+    #step-decide:checked ~ .page-wrapper .action-card:nth-child(5) { animation-delay: 0.7s; }
+    #step-decide:checked ~ .page-wrapper .action-card:nth-child(6) { animation-delay: 0.85s; }
+
+    .ac-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-sm); margin-bottom: var(--space-sm); flex-wrap: wrap; }
+    .ac-text { font-size: 0.875rem; color: var(--color-text-primary); line-height: 1.5; margin-bottom: var(--space-sm); }
+    .ac-action {
+      display: flex; align-items: center; gap: var(--space-xs);
+      font-size: 0.8125rem; font-weight: 600;
+      padding: var(--space-xs) var(--space-md); border-radius: var(--radius-pill);
+      border: 1.5px solid;
+    }
+    .ac-action.escalate  { background: #fff1f2; border-color: #fecdd3; color: #9f1239; }
+    .ac-action.thank     { background: #f0fdf4; border-color: #bbf7d0; color: #14532d; }
+    .ac-action.flag      { background: #fffbeb; border-color: #fde68a; color: #78350f; }
+    .ac-action.monitor   { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+    .ac-action.close     { background: var(--color-surface-2); border-color: var(--color-border); color: var(--color-text-secondary); }
+
+    .batch-decide { display: none; }
+    #batch-a:checked ~ .page-wrapper .batch-decide-a { display: block; }
+    #batch-b:checked ~ .page-wrapper .batch-decide-b { display: block; }
+    #batch-c:checked ~ .page-wrapper .batch-decide-c { display: block; }
+    .batch-decide-a { display: block; }
+
+    /* ==========================================================================
+       13. STAGE 4 — REPORT
+       ========================================================================== */
+    .report-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-lg);
+    }
+    .report-card {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl); padding: var(--space-lg); box-shadow: var(--shadow-sm);
+    }
+    .report-card-title {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--color-text-secondary); margin-bottom: var(--space-lg);
+    }
+
+    /* Donut chart via conic-gradient */
+    .donut-wrap { display: flex; align-items: center; gap: var(--space-lg); }
+    .donut {
+      width: 110px; height: 110px; border-radius: 50%; flex-shrink: 0;
+      position: relative;
+    }
+    .donut::after {
+      content: ""; position: absolute; inset: 22px;
+      background: var(--color-surface); border-radius: 50%;
+    }
+    /* Batch-specific conic gradients */
+    .batch-report { display: none; }
+    #batch-a:checked ~ .page-wrapper .batch-report-a { display: grid; }
+    #batch-b:checked ~ .page-wrapper .batch-report-b { display: grid; }
+    #batch-c:checked ~ .page-wrapper .batch-report-c { display: grid; }
+    .batch-report-a { display: grid; } /* default */
+
+    /* Batch A: 2 pos (33%), 2 neu (33%), 2 neg (33%) */
+    .donut-a { background: conic-gradient(var(--color-positive) 0% 33.3%, var(--color-neutral) 33.3% 66.6%, var(--color-negative) 66.6% 100%); }
+    /* Batch B: 2 pos (33%), 3 neu (50%), 1 neg (17%) */
+    .donut-b { background: conic-gradient(var(--color-positive) 0% 33.3%, var(--color-neutral) 33.3% 83.3%, var(--color-negative) 83.3% 100%); }
+    /* Batch C: 3 pos (50%), 1 neu (17%), 2 neg (33%) */
+    .donut-c { background: conic-gradient(var(--color-positive) 0% 50%, var(--color-neutral) 50% 66.7%, var(--color-negative) 66.7% 100%); }
+
+    .donut-legend { display: flex; flex-direction: column; gap: var(--space-sm); }
+    .legend-item { display: flex; align-items: center; gap: var(--space-sm); font-size: 0.8125rem; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .legend-label { color: var(--color-text-secondary); }
+    .legend-val { font-weight: 700; color: var(--color-text-primary); margin-left: auto; }
+
+    /* Top topics bar chart */
+    .topic-bars { display: flex; flex-direction: column; gap: var(--space-sm); }
+    .topic-bar-item { display: flex; flex-direction: column; gap: 4px; }
+    .topic-bar-label { display: flex; justify-content: space-between; font-size: 0.8125rem; }
+    .topic-bar-name { font-weight: 600; color: var(--color-text-primary); }
+    .topic-bar-count { color: var(--color-text-secondary); font-size: 0.75rem; }
+    .topic-bar-track { height: 8px; background: var(--color-border); border-radius: var(--radius-pill); overflow: hidden; }
+    .topic-bar-fill  { height: 100%; border-radius: var(--radius-pill); background: var(--color-accent); }
+    #step-report:checked ~ .page-wrapper .topic-bar-fill { animation: fillBar 0.9s ease forwards; }
+    .topic-bar-fill.w-90 { --target-w: 90%; }
+    .topic-bar-fill.w-75 { --target-w: 75%; }
+    .topic-bar-fill.w-55 { --target-w: 55%; }
+    @keyframes fillBar { to { width: var(--target-w, 100%); } }
+
+    /* High-urgency list */
+    .urgency-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+    .urgency-item {
+      display: flex; align-items: flex-start; gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background: var(--color-negative-bg); border: 1px solid #f5c2c7;
+      border-radius: var(--radius); border-left: 3px solid var(--color-negative);
+      font-size: 0.875rem;
+    }
+    .urgency-item-icon { flex-shrink: 0; margin-top: 2px; font-size: 0.9rem; }
+    .urgency-item-text { color: var(--color-negative-text); line-height: 1.45; }
+    .urgency-item-text strong { display: block; font-size: 0.8125rem; font-weight: 700; }
+
+    /* ==========================================================================
+       14. STAGE 5 — LOG
+       ========================================================================== */
+    .log-wrap {
+      background: var(--color-agent-bg); border: 1px solid var(--color-agent-border);
+      border-radius: var(--radius-xl); padding: var(--space-lg);
+      font-family: var(--font-mono); font-size: 0.8125rem;
+      color: var(--color-agent-text); max-height: 600px; overflow-y: auto;
+    }
+    .log-header-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: var(--space-md); padding-bottom: var(--space-sm);
+      border-bottom: 1px solid var(--color-agent-border);
+    }
+    .log-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-agent-accent); }
+    .log-session { font-size: 0.75rem; color: #475569; }
+
+    .log-line {
+      display: flex; gap: var(--space-md); padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,.04); line-height: 1.5;
+      opacity: 0;
+    }
+    #step-log:checked ~ .page-wrapper .log-line { animation: rowIn 0.25s ease forwards; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(1)  { animation-delay: 0.05s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(2)  { animation-delay: 0.12s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(3)  { animation-delay: 0.19s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(4)  { animation-delay: 0.26s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(5)  { animation-delay: 0.33s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(6)  { animation-delay: 0.40s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(7)  { animation-delay: 0.47s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(8)  { animation-delay: 0.54s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(9)  { animation-delay: 0.61s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(10) { animation-delay: 0.68s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(11) { animation-delay: 0.75s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(12) { animation-delay: 0.82s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(13) { animation-delay: 0.89s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(14) { animation-delay: 0.96s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(15) { animation-delay: 1.03s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(16) { animation-delay: 1.10s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(17) { animation-delay: 1.17s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(18) { animation-delay: 1.24s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(19) { animation-delay: 1.31s; }
+    #step-log:checked ~ .page-wrapper .log-line:nth-child(20) { animation-delay: 1.38s; }
+
+    .log-ts   { color: #475569; white-space: nowrap; flex-shrink: 0; min-width: 90px; }
+    .log-lvl  { white-space: nowrap; flex-shrink: 0; min-width: 58px; font-weight: 700; }
+    .log-lvl.info  { color: var(--color-agent-accent); }
+    .log-lvl.ok    { color: var(--color-agent-green); }
+    .log-lvl.warn  { color: var(--color-agent-amber); }
+    .log-lvl.err   { color: var(--color-agent-red); }
+    .log-msg  { color: var(--color-agent-text); }
+    .log-msg em   { color: #94a3b8; font-style: normal; }
+    .log-msg strong { color: var(--color-agent-accent); }
+
+    .batch-log { display: none; }
+    #batch-a:checked ~ .page-wrapper .batch-log-a { display: block; }
+    #batch-b:checked ~ .page-wrapper .batch-log-b { display: block; }
+    #batch-c:checked ~ .page-wrapper .batch-log-c { display: block; }
+    .batch-log-a { display: block; }
+
+    /* Log summary footer */
+    .log-summary {
+      margin-top: var(--space-md); padding-top: var(--space-md);
+      border-top: 1px solid var(--color-agent-border);
+      display: flex; gap: var(--space-xl); flex-wrap: wrap;
+    }
+    .log-stat { display: flex; flex-direction: column; gap: 2px; }
+    .log-stat-val { font-size: 1.25rem; font-weight: 700; color: var(--color-agent-accent); font-family: var(--font-mono); }
+    .log-stat-lbl { font-size: 0.7rem; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* ==========================================================================
+       15. FOOTER
+       ========================================================================== */
+    .app-footer {
+      border-top: 1px solid var(--color-border); text-align: center;
+      font-size: 0.8125rem; color: var(--color-text-secondary);
+      padding: var(--space-lg) var(--space-xl);
+    }
+
+    /* ==========================================================================
+       16. RESPONSIVE
+       ========================================================================== */
+    @media (max-width: 1024px) {
+      .report-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 900px) {
+      .input-layout { grid-template-columns: 1fr; }
+      .decide-grid  { grid-template-columns: 1fr; }
+      .result-row, .result-row-header {
+        grid-template-columns: 1fr 90px 90px 90px;
+      }
+      .result-row .rr-action, .result-row-header .rr-action-h { display: none; }
+    }
+    @media (max-width: 768px) {
+      .page-wrapper { padding: var(--space-lg) var(--space-md) var(--space-2xl); }
+      .header-inner { padding: var(--space-sm) var(--space-md); }
+      .pipeline-nav { padding: var(--space-sm) var(--space-md); gap: 0; }
+      .report-grid  { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 540px) {
+      .result-row, .result-row-header {
+        grid-template-columns: 1fr 90px 90px;
+      }
+      .result-row .rr-topic, .result-row-header .rr-topic-h { display: none; }
+    }
+
+    /* ==========================================================================
+       17. FOCUS VISIBLE
+       ========================================================================== */
+    :focus-visible { outline: 2px solid var(--color-border-focus); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <!-- =====================================================================
+       STATE RADIOS — pipeline steps
+       Must be first children of <body> for the ~ combinator to reach everything.
+       ===================================================================== -->
+  <input class="sr" type="radio" name="pipeline-step" id="step-input"   checked />
+  <input class="sr" type="radio" name="pipeline-step" id="step-analyze" />
+  <input class="sr" type="radio" name="pipeline-step" id="step-decide"  />
+  <input class="sr" type="radio" name="pipeline-step" id="step-report"  />
+  <input class="sr" type="radio" name="pipeline-step" id="step-log"     />
+
+  <!-- STATE RADIOS — batch selector -->
+  <input class="sr" type="radio" name="batch" id="batch-a" checked />
+  <input class="sr" type="radio" name="batch" id="batch-b" />
+  <input class="sr" type="radio" name="batch" id="batch-c" />
+
+  <!-- =====================================================================
+       HEADER
+       ===================================================================== -->
+  <header class="app-header" role="banner">
+    <div class="header-inner">
+      <a class="app-logo" href="#" aria-label="Feedback Sentinel home">
+        <svg class="app-logo-icon" viewBox="0 0 34 34" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <rect width="34" height="34" rx="9" fill="#0f172a"/>
+          <polyline points="4,17 8,10 12,22 15,8 18,24 21,14 25,19 30,17"
+                    stroke="#38bdf8" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="app-logo-text">Feedback <span>Sentinel</span></span>
+      </a>
+      <div class="header-badge">
+        <span class="pulse-dot" aria-hidden="true"></span>
+        AI Agent Active
+      </div>
+    </div>
+  </header>
+
+  <!-- =====================================================================
+       PAGE CONTENT
+       ===================================================================== -->
+  <div class="page-wrapper" id="main-content" tabindex="-1">
+
+    <!-- PIPELINE PROGRESS NAV -->
+    <nav class="pipeline-nav" aria-label="Pipeline steps">
+      <div class="pipeline-step" data-step="1">
+        <div class="step-circle" aria-hidden="true">1</div>
+        <span class="step-label">Input</span>
+      </div>
+      <div class="pipeline-step" data-step="2">
+        <div class="step-circle" aria-hidden="true">2</div>
+        <span class="step-label">Analyze</span>
+      </div>
+      <div class="pipeline-step" data-step="3">
+        <div class="step-circle" aria-hidden="true">3</div>
+        <span class="step-label">Decide</span>
+      </div>
+      <div class="pipeline-step" data-step="4">
+        <div class="step-circle" aria-hidden="true">4</div>
+        <span class="step-label">Report</span>
+      </div>
+      <div class="pipeline-step" data-step="5">
+        <div class="step-circle" aria-hidden="true">5</div>
+        <span class="step-label">Log</span>
+      </div>
+    </nav>
+
+    <!-- =====================================================================
+         STAGE 1 — INPUT
+         ===================================================================== -->
+    <div class="stage stage-input" role="region" aria-labelledby="stage-input-title">
+      <div class="panel">
+        <div class="panel-header">
+          <svg class="panel-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="3" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M6 7h8M6 10h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <h2 class="panel-title" id="stage-input-title">Step 1 — Input Feedback Batch</h2>
+          <span class="panel-subtitle">Select a batch, then run the agent</span>
+        </div>
+
+        <div class="input-layout">
+          <!-- Left: batch selector + text -->
+          <div>
+            <div class="batch-selector">
+              <p class="batch-selector-label">Select a feedback batch to analyze</p>
+              <div class="batch-tabs" role="radiogroup" aria-label="Feedback batch selection">
+                <input type="radio" name="batch" id="batch-a-tab" class="sr" />
+                <label for="batch-a" tabindex="0">&#128230; Batch A — E-commerce</label>
+
+                <input type="radio" name="batch" id="batch-b-tab" class="sr" />
+                <label for="batch-b" tabindex="0">&#128187; Batch B — SaaS Product</label>
+
+                <input type="radio" name="batch" id="batch-c-tab" class="sr" />
+                <label for="batch-c" tabindex="0">&#127869; Batch C — Restaurant</label>
+              </div>
+            </div>
+
+            <!-- Batch A text -->
+            <div class="batch-text batch-text-a" aria-live="polite">
+              <textarea class="feedback-display" readonly aria-label="Batch A feedback entries" aria-describedby="batch-hint">The delivery was incredibly fast and the packaging was pristine — really exceeded my expectations.
+My order arrived four days late and the box was completely crushed. No one from support has replied to my two emails.
+I bought the portable speaker but the battery only lasts 3 hours, not the advertised 12. Very misleading.
+Returns process was straightforward and the refund appeared in two days. Happy with how it was handled.
+Still waiting on a response about my damaged goods claim — this has been going on for a week now.
+Product quality is good, but the checkout on the website was confusing and kept timing out.</textarea>
+              <div class="input-meta">
+                <p id="batch-hint">Read-only demo — this is the batch the agent will process.</p>
+                <span class="entry-count" aria-label="6 entries">6 entries</span>
+              </div>
+            </div>
+
+            <!-- Batch B text -->
+            <div class="batch-text batch-text-b" aria-live="polite">
+              <textarea class="feedback-display" readonly aria-label="Batch B feedback entries">The onboarding flow is excellent — I was up and running in under 10 minutes. Great job.
+Your pricing page is really unclear. I can&#x27;t figure out the difference between the Pro and Business tiers.
+I&#x27;ve been trying to reach support for three days about a billing error — still no resolution.
+The new dashboard update is clean and intuitive. Navigation feels much faster now.
+The API rate limits are way too restrictive for our use case and the documentation is outdated.
+Feature requests I submitted six months ago haven&#x27;t had any update. No visibility into the roadmap.</textarea>
+              <div class="input-meta">
+                <p>Read-only demo — this is the batch the agent will process.</p>
+                <span class="entry-count" aria-label="6 entries">6 entries</span>
+              </div>
+            </div>
+
+            <!-- Batch C text -->
+            <div class="batch-text batch-text-c" aria-live="polite">
+              <textarea class="feedback-display" readonly aria-label="Batch C feedback entries">The pasta was cooked to perfection and the service was warm and attentive throughout the evening.
+We waited 45 minutes for our table despite having a reservation. No apology from staff.
+The dessert menu has shrunk noticeably — some of our favourites are no longer available.
+Staff went out of their way to accommodate our dietary requirements. Really appreciated.
+The noise level in the dining room made conversation almost impossible on a Saturday night.
+Food arrived promptly and tasted fresh. The online booking system worked flawlessly too.</textarea>
+              <div class="input-meta">
+                <p>Read-only demo — this is the batch the agent will process.</p>
+                <span class="entry-count" aria-label="6 entries">6 entries</span>
+              </div>
+            </div>
+
+            <!-- Run button activates step-analyze -->
+            <label class="btn-run" for="step-analyze" tabindex="0"
+                   aria-label="Run the AI agent pipeline on the selected batch (press Space to activate)">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="9" cy="9" r="7.5" stroke="white" stroke-width="1.5"/>
+                <polygon points="7,6 13,9 7,12" fill="white"/>
+              </svg>
+              Run Agent Pipeline
+            </label>
+          </div>
+
+          <!-- Right: info card -->
+          <aside class="input-info-card" aria-label="Pipeline steps overview">
+            <p class="info-card-title">&#9658; Agent pipeline — 5 steps</p>
+            <ul class="pipeline-step-list">
+              <li class="psl-item">
+                <span class="psl-num">1</span>
+                <span class="psl-text"><strong>INPUT</strong> — load a batch of customer feedback entries</span>
+              </li>
+              <li class="psl-item">
+                <span class="psl-num">2</span>
+                <span class="psl-text"><strong>ANALYZE</strong> — detect sentiment, extract key topic, score urgency</span>
+              </li>
+              <li class="psl-item">
+                <span class="psl-num">3</span>
+                <span class="psl-text"><strong>DECIDE</strong> — auto-recommend an action per entry</span>
+              </li>
+              <li class="psl-item">
+                <span class="psl-num">4</span>
+                <span class="psl-text"><strong>REPORT</strong> — sentiment chart, top topics, high-urgency items</span>
+              </li>
+              <li class="psl-item">
+                <span class="psl-num">5</span>
+                <span class="psl-text"><strong>LOG</strong> — timestamped session log of all agent decisions</span>
+              </li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </div><!-- /stage-input -->
+
+    <!-- =====================================================================
+         STAGE 2 — ANALYZE
+         ===================================================================== -->
+    <div class="stage stage-analyze" role="region" aria-labelledby="stage-analyze-title" aria-live="polite">
+      <div class="panel">
+        <div class="panel-header">
+          <svg class="panel-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M14 14l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M9 6v3l2 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <h2 class="panel-title" id="stage-analyze-title">Step 2 — Analyze</h2>
+          <span class="panel-subtitle">Sentiment &#8226; Topic &#8226; Urgency</span>
+        </div>
+
+        <!-- Processing progress bar -->
+        <div class="processing-bar-wrap" aria-label="Processing feedback entries">
+          <p class="processing-label">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            Agent processing batch&#x2026;
+          </p>
+          <div class="processing-bar" role="progressbar" aria-label="Analysis progress" aria-valuemin="0" aria-valuemax="100">
+            <div class="processing-fill"></div>
+          </div>
+        </div>
+
+        <!-- Column headers -->
+        <div class="result-row-header" aria-hidden="true">
+          <span>Feedback Entry</span>
+          <span>Sentiment</span>
+          <span class="rr-topic-h">Topic</span>
+          <span>Urgency</span>
+          <span class="rr-action-h">Recommended Action</span>
+        </div>
+
+        <!-- BATCH A results -->
+        <div class="batch-results batch-results-a">
+          <div class="result-rows" role="list" aria-label="Analysis results for Batch A">
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">The delivery was incredibly fast and the packaging was pristine.<span>Entry #1</span></div>
+              <div><span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span></div>
+              <div><span class="topic-tag">&#128230; Delivery</span></div>
+              <div><span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:var(--color-text-secondary)">Send thank-you reply</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Order four days late, box crushed. Support hasn&#x27;t replied to two emails.<span>Entry #2</span></div>
+              <div><span class="badge badge-negative"><span class="badge-dot" aria-hidden="true"></span>Negative</span></div>
+              <div><span class="topic-tag">&#128686; Support</span></div>
+              <div><span class="badge badge-urgency-high"><span class="badge-dot" aria-hidden="true"></span>High</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:#9f1239;font-weight:600">Escalate to support team</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Battery only lasts 3 hrs, not the advertised 12. Very misleading.<span>Entry #3</span></div>
+              <div><span class="badge badge-negative"><span class="badge-dot" aria-hidden="true"></span>Negative</span></div>
+              <div><span class="topic-tag">&#128274; Product</span></div>
+              <div><span class="badge badge-urgency-high"><span class="badge-dot" aria-hidden="true"></span>High</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:#78350f;font-weight:600">Flag for product review</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Returns process was straightforward. Refund appeared in two days.<span>Entry #4</span></div>
+              <div><span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span></div>
+              <div><span class="topic-tag">&#128203; Returns</span></div>
+              <div><span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:var(--color-text-secondary)">Log and close</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Waiting on response about damaged goods claim — going on a week.<span>Entry #5</span></div>
+              <div><span class="badge badge-negative"><span class="badge-dot" aria-hidden="true"></span>Negative</span></div>
+              <div><span class="topic-tag">&#128686; Support</span></div>
+              <div><span class="badge badge-urgency-high"><span class="badge-dot" aria-hidden="true"></span>High</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:#9f1239;font-weight:600">Escalate to support team</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Product quality good, but checkout was confusing and kept timing out.<span>Entry #6</span></div>
+              <div><span class="badge badge-neutral"><span class="badge-dot" aria-hidden="true"></span>Neutral</span></div>
+              <div><span class="topic-tag">&#128421; Checkout</span></div>
+              <div><span class="badge badge-urgency-med"><span class="badge-dot" aria-hidden="true"></span>Medium</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:#1e40af;font-weight:600">Flag for UX review</span></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- BATCH B results -->
+        <div class="batch-results batch-results-b">
+          <div class="result-rows" role="list" aria-label="Analysis results for Batch B">
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Onboarding flow is excellent — up and running in under 10 minutes.<span>Entry #1</span></div>
+              <div><span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span></div>
+              <div><span class="topic-tag">&#128640; Onboarding</span></div>
+              <div><span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:var(--color-text-secondary)">Send thank-you reply</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Pricing page unclear. Can&#x27;t tell the difference between Pro and Business.<span>Entry #2</span></div>
+              <div><span class="badge badge-neutral"><span class="badge-dot" aria-hidden="true"></span>Neutral</span></div>
+              <div><span class="topic-tag">&#128176; Pricing</span></div>
+              <div><span class="badge badge-urgency-med"><span class="badge-dot" aria-hidden="true"></span>Medium</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:#1e40af;font-weight:600">Flag for product review</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Support unresponsive for 3 days over a billing error.<span>Entry #3</span></div>
+              <div><span class="badge badge-negative"><span class="badge-dot" aria-hidden="true"></span>Negative</span></div>
+              <div><span class="topic-tag">&#128686; Support</span></div>
+              <div><span class="badge badge-urgency-high"><span class="badge-dot" aria-hidden="true"></span>High</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:#9f1239;font-weight:600">Escalate to support team</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">New dashboard update is clean and intuitive. Navigation much faster.<span>Entry #4</span></div>
+              <div><span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span></div>
+              <div><span class="topic-tag">&#128421; Dashboard</span></div>
+              <div><span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:var(--color-text-secondary)">Log and close</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">API rate limits too restrictive. Documentation is outdated.<span>Entry #5</span></div>
+              <div><span class="badge badge-neutral"><span class="badge-dot" aria-hidden="true"></span>Neutral</span></div>
+              <div><span class="topic-tag">&#128268; API</span></div>
+              <div><span class="badge badge-urgency-med"><span class="badge-dot" aria-hidden="true"></span>Medium</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:#1e40af;font-weight:600">Flag for product review</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Feature requests 6 months old with no update or roadmap visibility.<span>Entry #6</span></div>
+              <div><span class="badge badge-neutral"><span class="badge-dot" aria-hidden="true"></span>Neutral</span></div>
+              <div><span class="topic-tag">&#128196; Roadmap</span></div>
+              <div><span class="badge badge-urgency-med"><span class="badge-dot" aria-hidden="true"></span>Medium</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:#1e40af;font-weight:600">Monitor and follow up</span></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- BATCH C results -->
+        <div class="batch-results batch-results-c">
+          <div class="result-rows" role="list" aria-label="Analysis results for Batch C">
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Pasta cooked to perfection, service was warm and attentive.<span>Entry #1</span></div>
+              <div><span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span></div>
+              <div><span class="topic-tag">&#127869; Food Quality</span></div>
+              <div><span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:var(--color-text-secondary)">Send thank-you reply</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Waited 45 mins despite a reservation. No apology from staff.<span>Entry #2</span></div>
+              <div><span class="badge badge-negative"><span class="badge-dot" aria-hidden="true"></span>Negative</span></div>
+              <div><span class="topic-tag">&#8987; Wait Time</span></div>
+              <div><span class="badge badge-urgency-high"><span class="badge-dot" aria-hidden="true"></span>High</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:#9f1239;font-weight:600">Escalate to management</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Dessert menu has shrunk — our favourites are no longer available.<span>Entry #3</span></div>
+              <div><span class="badge badge-neutral"><span class="badge-dot" aria-hidden="true"></span>Neutral</span></div>
+              <div><span class="topic-tag">&#127828; Menu</span></div>
+              <div><span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:#1e40af;font-weight:600">Flag for menu review</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Staff accommodated all our dietary requirements. Really appreciated.<span>Entry #4</span></div>
+              <div><span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span></div>
+              <div><span class="topic-tag">&#128100; Staff</span></div>
+              <div><span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:var(--color-text-secondary)">Send thank-you reply</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Noise level on Saturday night made conversation almost impossible.<span>Entry #5</span></div>
+              <div><span class="badge badge-negative"><span class="badge-dot" aria-hidden="true"></span>Negative</span></div>
+              <div><span class="topic-tag">&#128266; Noise</span></div>
+              <div><span class="badge badge-urgency-high"><span class="badge-dot" aria-hidden="true"></span>High</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:#78350f;font-weight:600">Flag for venue review</span></div>
+            </div>
+
+            <div class="result-row" role="listitem">
+              <div class="rr-text">Food arrived promptly and fresh. Online booking system worked flawlessly.<span>Entry #6</span></div>
+              <div><span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span></div>
+              <div><span class="topic-tag">&#127869; Food Quality</span></div>
+              <div><span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span></div>
+              <div class="rr-action"><span style="font-size:0.8125rem;color:var(--color-text-secondary)">Log and close</span></div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="nav-row">
+          <label class="btn-back" for="step-input" tabindex="0" aria-label="Go back to Input step">&#8592; Back</label>
+          <label class="btn-next" for="step-decide" tabindex="0" aria-label="Proceed to Decide step">Next: Decide &#8594;</label>
+        </div>
+      </div>
+    </div><!-- /stage-analyze -->
+
+    <!-- =====================================================================
+         STAGE 3 — DECIDE
+         ===================================================================== -->
+    <div class="stage stage-decide" role="region" aria-labelledby="stage-decide-title" aria-live="polite">
+      <div class="panel">
+        <div class="panel-header">
+          <svg class="panel-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 10h14M10 3l7 7-7 7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <h2 class="panel-title" id="stage-decide-title">Step 3 — Decide</h2>
+          <span class="panel-subtitle">Auto-recommended actions per entry</span>
+        </div>
+
+        <!-- BATCH A decide -->
+        <div class="batch-decide batch-decide-a">
+          <div class="decide-grid" role="list" aria-label="Action recommendations for Batch A">
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span>
+                <span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span>
+              </div>
+              <p class="ac-text">&#8220;Delivery was incredibly fast and packaging was pristine.&#8221;</p>
+              <div class="ac-action thank">&#10003; Send thank-you reply</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-negative"><span class="badge-dot" aria-hidden="true"></span>Negative</span>
+                <span class="badge badge-urgency-high"><span class="badge-dot" aria-hidden="true"></span>High</span>
+              </div>
+              <p class="ac-text">&#8220;Order four days late, box crushed. Support hasn&#x27;t replied to two emails.&#8221;</p>
+              <div class="ac-action escalate">&#9888; Escalate to support team</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-negative"><span class="badge-dot" aria-hidden="true"></span>Negative</span>
+                <span class="badge badge-urgency-high"><span class="badge-dot" aria-hidden="true"></span>High</span>
+              </div>
+              <p class="ac-text">&#8220;Battery only lasts 3 hours, not the advertised 12. Very misleading.&#8221;</p>
+              <div class="ac-action flag">&#9873; Flag for product review</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span>
+                <span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span>
+              </div>
+              <p class="ac-text">&#8220;Returns process was straightforward. Refund appeared in two days.&#8221;</p>
+              <div class="ac-action close">&#10003; Log and close</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-negative"><span class="badge-dot" aria-hidden="true"></span>Negative</span>
+                <span class="badge badge-urgency-high"><span class="badge-dot" aria-hidden="true"></span>High</span>
+              </div>
+              <p class="ac-text">&#8220;Waiting on response about damaged goods claim for a week.&#8221;</p>
+              <div class="ac-action escalate">&#9888; Escalate to support team</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-neutral"><span class="badge-dot" aria-hidden="true"></span>Neutral</span>
+                <span class="badge badge-urgency-med"><span class="badge-dot" aria-hidden="true"></span>Medium</span>
+              </div>
+              <p class="ac-text">&#8220;Product quality good, but checkout was confusing and kept timing out.&#8221;</p>
+              <div class="ac-action monitor">&#128065; Flag for UX review</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- BATCH B decide -->
+        <div class="batch-decide batch-decide-b">
+          <div class="decide-grid" role="list" aria-label="Action recommendations for Batch B">
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span>
+                <span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span>
+              </div>
+              <p class="ac-text">&#8220;Onboarding flow is excellent — up and running in under 10 minutes.&#8221;</p>
+              <div class="ac-action thank">&#10003; Send thank-you reply</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-neutral"><span class="badge-dot" aria-hidden="true"></span>Neutral</span>
+                <span class="badge badge-urgency-med"><span class="badge-dot" aria-hidden="true"></span>Medium</span>
+              </div>
+              <p class="ac-text">&#8220;Pricing page unclear. Can&#x27;t tell difference between Pro and Business.&#8221;</p>
+              <div class="ac-action flag">&#9873; Flag for product review</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-negative"><span class="badge-dot" aria-hidden="true"></span>Negative</span>
+                <span class="badge badge-urgency-high"><span class="badge-dot" aria-hidden="true"></span>High</span>
+              </div>
+              <p class="ac-text">&#8220;Support unresponsive for 3 days over a billing error.&#8221;</p>
+              <div class="ac-action escalate">&#9888; Escalate to support team</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span>
+                <span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span>
+              </div>
+              <p class="ac-text">&#8220;New dashboard update is clean and intuitive. Navigation much faster.&#8221;</p>
+              <div class="ac-action close">&#10003; Log and close</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-neutral"><span class="badge-dot" aria-hidden="true"></span>Neutral</span>
+                <span class="badge badge-urgency-med"><span class="badge-dot" aria-hidden="true"></span>Medium</span>
+              </div>
+              <p class="ac-text">&#8220;API rate limits too restrictive. Documentation outdated.&#8221;</p>
+              <div class="ac-action flag">&#9873; Flag for product review</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-neutral"><span class="badge-dot" aria-hidden="true"></span>Neutral</span>
+                <span class="badge badge-urgency-med"><span class="badge-dot" aria-hidden="true"></span>Medium</span>
+              </div>
+              <p class="ac-text">&#8220;Feature requests 6 months old with no update or roadmap visibility.&#8221;</p>
+              <div class="ac-action monitor">&#128065; Monitor and follow up</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- BATCH C decide -->
+        <div class="batch-decide batch-decide-c">
+          <div class="decide-grid" role="list" aria-label="Action recommendations for Batch C">
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span>
+                <span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span>
+              </div>
+              <p class="ac-text">&#8220;Pasta cooked to perfection, service was warm and attentive.&#8221;</p>
+              <div class="ac-action thank">&#10003; Send thank-you reply</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-negative"><span class="badge-dot" aria-hidden="true"></span>Negative</span>
+                <span class="badge badge-urgency-high"><span class="badge-dot" aria-hidden="true"></span>High</span>
+              </div>
+              <p class="ac-text">&#8220;Waited 45 minutes despite a reservation. No apology from staff.&#8221;</p>
+              <div class="ac-action escalate">&#9888; Escalate to management</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-neutral"><span class="badge-dot" aria-hidden="true"></span>Neutral</span>
+                <span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span>
+              </div>
+              <p class="ac-text">&#8220;Dessert menu has shrunk — our favourites no longer available.&#8221;</p>
+              <div class="ac-action flag">&#9873; Flag for menu review</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span>
+                <span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span>
+              </div>
+              <p class="ac-text">&#8220;Staff accommodated all dietary requirements. Really appreciated.&#8221;</p>
+              <div class="ac-action thank">&#10003; Send thank-you reply</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-negative"><span class="badge-dot" aria-hidden="true"></span>Negative</span>
+                <span class="badge badge-urgency-high"><span class="badge-dot" aria-hidden="true"></span>High</span>
+              </div>
+              <p class="ac-text">&#8220;Noise level on Saturday night made conversation almost impossible.&#8221;</p>
+              <div class="ac-action flag">&#9873; Flag for venue review</div>
+            </div>
+
+            <div class="action-card" role="listitem">
+              <div class="ac-top">
+                <span class="badge badge-positive"><span class="badge-dot" aria-hidden="true"></span>Positive</span>
+                <span class="badge badge-urgency-low"><span class="badge-dot" aria-hidden="true"></span>Low</span>
+              </div>
+              <p class="ac-text">&#8220;Food arrived promptly and fresh. Online booking worked flawlessly.&#8221;</p>
+              <div class="ac-action close">&#10003; Log and close</div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="nav-row">
+          <label class="btn-back" for="step-analyze" tabindex="0" aria-label="Go back to Analyze step">&#8592; Back</label>
+          <label class="btn-next" for="step-report" tabindex="0" aria-label="Proceed to Report step">Next: Report &#8594;</label>
+        </div>
+      </div>
+    </div><!-- /stage-decide -->
+
+    <!-- =====================================================================
+         STAGE 4 — REPORT
+         ===================================================================== -->
+    <div class="stage stage-report" role="region" aria-labelledby="stage-report-title" aria-live="polite">
+      <div class="panel">
+        <div class="panel-header">
+          <svg class="panel-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M5 14l3-4 3 3 4-6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <h2 class="panel-title" id="stage-report-title">Step 4 — Report</h2>
+          <span class="panel-subtitle">Summary dashboard</span>
+        </div>
+
+        <!-- BATCH A report -->
+        <div class="batch-report batch-report-a" style="gap:var(--space-lg);grid-template-columns:repeat(3,1fr);margin-bottom:var(--space-lg);" role="region" aria-label="Report for Batch A — E-commerce">
+
+          <!-- Sentiment distribution -->
+          <div class="report-card">
+            <h3 class="report-card-title">Sentiment Distribution</h3>
+            <div class="donut-wrap">
+              <div class="donut donut-a" role="img" aria-label="Sentiment donut chart: 33% Positive, 17% Neutral, 50% Negative"></div>
+              <div class="donut-legend">
+                <div class="legend-item">
+                  <span class="legend-dot" style="background:var(--color-positive)" aria-hidden="true"></span>
+                  <span class="legend-label">Positive</span>
+                  <span class="legend-val">2</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot" style="background:var(--color-neutral)" aria-hidden="true"></span>
+                  <span class="legend-label">Neutral</span>
+                  <span class="legend-val">1</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot" style="background:var(--color-negative)" aria-hidden="true"></span>
+                  <span class="legend-label">Negative</span>
+                  <span class="legend-val">3</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top 3 topics -->
+          <div class="report-card">
+            <h3 class="report-card-title">Top 3 Recurring Topics</h3>
+            <div class="topic-bars">
+              <div class="topic-bar-item">
+                <div class="topic-bar-label">
+                  <span class="topic-bar-name">Support</span>
+                  <span class="topic-bar-count">2 mentions</span>
+                </div>
+                <div class="topic-bar-track"><div class="topic-bar-fill w-90" style="width:0%"></div></div>
+              </div>
+              <div class="topic-bar-item">
+                <div class="topic-bar-label">
+                  <span class="topic-bar-name">Delivery</span>
+                  <span class="topic-bar-count">2 mentions</span>
+                </div>
+                <div class="topic-bar-track"><div class="topic-bar-fill w-75" style="width:0%"></div></div>
+              </div>
+              <div class="topic-bar-item">
+                <div class="topic-bar-label">
+                  <span class="topic-bar-name">Product</span>
+                  <span class="topic-bar-count">1 mention</span>
+                </div>
+                <div class="topic-bar-track"><div class="topic-bar-fill w-55" style="width:0%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- High urgency -->
+          <div class="report-card">
+            <h3 class="report-card-title">&#128680; High-Urgency Items</h3>
+            <div class="urgency-list">
+              <div class="urgency-item">
+                <span class="urgency-item-icon" aria-hidden="true">&#9888;</span>
+                <div class="urgency-item-text">
+                  <strong>Support / Negative</strong>
+                  Order late, box crushed — 2 unanswered emails
+                </div>
+              </div>
+              <div class="urgency-item">
+                <span class="urgency-item-icon" aria-hidden="true">&#9873;</span>
+                <div class="urgency-item-text">
+                  <strong>Product / Negative</strong>
+                  Battery life claim misrepresented (3 hr vs 12 hr)
+                </div>
+              </div>
+              <div class="urgency-item">
+                <span class="urgency-item-icon" aria-hidden="true">&#9888;</span>
+                <div class="urgency-item-text">
+                  <strong>Support / Negative</strong>
+                  Damaged goods claim open for 1 week with no response
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /batch-report-a -->
+
+        <!-- BATCH B report -->
+        <div class="batch-report batch-report-b" style="gap:var(--space-lg);grid-template-columns:repeat(3,1fr);margin-bottom:var(--space-lg);" role="region" aria-label="Report for Batch B — SaaS Product">
+
+          <div class="report-card">
+            <h3 class="report-card-title">Sentiment Distribution</h3>
+            <div class="donut-wrap">
+              <div class="donut donut-b" role="img" aria-label="Sentiment donut chart: 33% Positive, 50% Neutral, 17% Negative"></div>
+              <div class="donut-legend">
+                <div class="legend-item">
+                  <span class="legend-dot" style="background:var(--color-positive)" aria-hidden="true"></span>
+                  <span class="legend-label">Positive</span>
+                  <span class="legend-val">2</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot" style="background:var(--color-neutral)" aria-hidden="true"></span>
+                  <span class="legend-label">Neutral</span>
+                  <span class="legend-val">3</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot" style="background:var(--color-negative)" aria-hidden="true"></span>
+                  <span class="legend-label">Negative</span>
+                  <span class="legend-val">1</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-card">
+            <h3 class="report-card-title">Top 3 Recurring Topics</h3>
+            <div class="topic-bars">
+              <div class="topic-bar-item">
+                <div class="topic-bar-label">
+                  <span class="topic-bar-name">Product</span>
+                  <span class="topic-bar-count">3 mentions</span>
+                </div>
+                <div class="topic-bar-track"><div class="topic-bar-fill w-90" style="width:0%"></div></div>
+              </div>
+              <div class="topic-bar-item">
+                <div class="topic-bar-label">
+                  <span class="topic-bar-name">Support</span>
+                  <span class="topic-bar-count">1 mention</span>
+                </div>
+                <div class="topic-bar-track"><div class="topic-bar-fill w-75" style="width:0%"></div></div>
+              </div>
+              <div class="topic-bar-item">
+                <div class="topic-bar-label">
+                  <span class="topic-bar-name">Pricing</span>
+                  <span class="topic-bar-count">1 mention</span>
+                </div>
+                <div class="topic-bar-track"><div class="topic-bar-fill w-55" style="width:0%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-card">
+            <h3 class="report-card-title">&#128680; High-Urgency Items</h3>
+            <div class="urgency-list">
+              <div class="urgency-item">
+                <span class="urgency-item-icon" aria-hidden="true">&#9888;</span>
+                <div class="urgency-item-text">
+                  <strong>Support / Negative</strong>
+                  Billing error unresolved after 3 days of unanswered support requests
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /batch-report-b -->
+
+        <!-- BATCH C report -->
+        <div class="batch-report batch-report-c" style="gap:var(--space-lg);grid-template-columns:repeat(3,1fr);margin-bottom:var(--space-lg);" role="region" aria-label="Report for Batch C — Restaurant">
+
+          <div class="report-card">
+            <h3 class="report-card-title">Sentiment Distribution</h3>
+            <div class="donut-wrap">
+              <div class="donut donut-c" role="img" aria-label="Sentiment donut chart: 50% Positive, 17% Neutral, 33% Negative"></div>
+              <div class="donut-legend">
+                <div class="legend-item">
+                  <span class="legend-dot" style="background:var(--color-positive)" aria-hidden="true"></span>
+                  <span class="legend-label">Positive</span>
+                  <span class="legend-val">3</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot" style="background:var(--color-neutral)" aria-hidden="true"></span>
+                  <span class="legend-label">Neutral</span>
+                  <span class="legend-val">1</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot" style="background:var(--color-negative)" aria-hidden="true"></span>
+                  <span class="legend-label">Negative</span>
+                  <span class="legend-val">2</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-card">
+            <h3 class="report-card-title">Top 3 Recurring Topics</h3>
+            <div class="topic-bars">
+              <div class="topic-bar-item">
+                <div class="topic-bar-label">
+                  <span class="topic-bar-name">Food Quality</span>
+                  <span class="topic-bar-count">2 mentions</span>
+                </div>
+                <div class="topic-bar-track"><div class="topic-bar-fill w-90" style="width:0%"></div></div>
+              </div>
+              <div class="topic-bar-item">
+                <div class="topic-bar-label">
+                  <span class="topic-bar-name">Staff</span>
+                  <span class="topic-bar-count">1 mention</span>
+                </div>
+                <div class="topic-bar-track"><div class="topic-bar-fill w-75" style="width:0%"></div></div>
+              </div>
+              <div class="topic-bar-item">
+                <div class="topic-bar-label">
+                  <span class="topic-bar-name">Wait Time</span>
+                  <span class="topic-bar-count">1 mention</span>
+                </div>
+                <div class="topic-bar-track"><div class="topic-bar-fill w-55" style="width:0%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-card">
+            <h3 class="report-card-title">&#128680; High-Urgency Items</h3>
+            <div class="urgency-list">
+              <div class="urgency-item">
+                <span class="urgency-item-icon" aria-hidden="true">&#9888;</span>
+                <div class="urgency-item-text">
+                  <strong>Wait Time / Negative</strong>
+                  45-minute wait despite reservation, no apology from staff
+                </div>
+              </div>
+              <div class="urgency-item">
+                <span class="urgency-item-icon" aria-hidden="true">&#9873;</span>
+                <div class="urgency-item-text">
+                  <strong>Noise / Negative</strong>
+                  Dining room noise level prevents conversation on peak nights
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /batch-report-c -->
+
+        <div class="nav-row">
+          <label class="btn-back" for="step-decide" tabindex="0" aria-label="Go back to Decide step">&#8592; Back</label>
+          <label class="btn-next" for="step-log" tabindex="0" aria-label="Proceed to Log step">Next: Log &#8594;</label>
+        </div>
+      </div>
+    </div><!-- /stage-report -->
+
+    <!-- =====================================================================
+         STAGE 5 — LOG
+         ===================================================================== -->
+    <div class="stage stage-log" role="region" aria-labelledby="stage-log-title" aria-live="polite">
+      <div class="panel panel-dark">
+        <div class="panel-header">
+          <svg class="panel-icon" style="color:var(--color-agent-accent)" viewBox="0 0 20 20" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M7 6h6M7 9h6M7 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <h2 class="panel-title" id="stage-log-title">Step 5 — Session Log</h2>
+          <span class="panel-subtitle" style="color:#475569">Timestamped agent decisions</span>
+        </div>
+
+        <div class="log-wrap" role="log" aria-label="Agent session decision log" aria-live="polite">
+          <div class="log-header-bar">
+            <span class="log-title">&#9608; Agent Session Log</span>
+            <span class="log-session">Session ID: FSA-2025-001</span>
+          </div>
+
+          <!-- BATCH A log -->
+          <div class="batch-log batch-log-a">
+            <div class="log-line"><span class="log-ts">09:00:00.001</span><span class="log-lvl info">INFO</span><span class="log-msg">Agent pipeline <strong>initialized</strong> &#8212; Batch A (E-commerce), 6 entries</span></div>
+            <div class="log-line"><span class="log-ts">09:00:00.182</span><span class="log-lvl info">INFO</span><span class="log-msg">Parsing feedback entries&#x2026; <em>6 lines detected</em></span></div>
+            <div class="log-line"><span class="log-ts">09:00:00.301</span><span class="log-lvl ok">  OK</span><span class="log-msg">Entry #1 &#8212; Sentiment: <strong>Positive</strong> | Topic: Delivery | Urgency: Low</span></div>
+            <div class="log-line"><span class="log-ts">09:00:00.418</span><span class="log-lvl err"> ERR</span><span class="log-msg">Entry #2 &#8212; Sentiment: <strong>Negative</strong> | Topic: Support | Urgency: <strong>HIGH</strong> &#9888;</span></div>
+            <div class="log-line"><span class="log-ts">09:00:00.534</span><span class="log-lvl err"> ERR</span><span class="log-msg">Entry #3 &#8212; Sentiment: <strong>Negative</strong> | Topic: Product | Urgency: <strong>HIGH</strong> &#9888;</span></div>
+            <div class="log-line"><span class="log-ts">09:00:00.651</span><span class="log-lvl ok">  OK</span><span class="log-msg">Entry #4 &#8212; Sentiment: <strong>Positive</strong> | Topic: Returns | Urgency: Low</span></div>
+            <div class="log-line"><span class="log-ts">09:00:00.768</span><span class="log-lvl err"> ERR</span><span class="log-msg">Entry #5 &#8212; Sentiment: <strong>Negative</strong> | Topic: Support | Urgency: <strong>HIGH</strong> &#9888;</span></div>
+            <div class="log-line"><span class="log-ts">09:00:00.884</span><span class="log-lvl warn">WARN</span><span class="log-msg">Entry #6 &#8212; Sentiment: <strong>Neutral</strong> | Topic: Checkout | Urgency: Medium</span></div>
+            <div class="log-line"><span class="log-ts">09:00:01.002</span><span class="log-lvl info">INFO</span><span class="log-msg">DECIDE phase &#8212; generating action recommendations&#x2026;</span></div>
+            <div class="log-line"><span class="log-ts">09:00:01.118</span><span class="log-lvl ok">  OK</span><span class="log-msg">Action assigned: Entry #1 &#8594; <em>Send thank-you reply</em></span></div>
+            <div class="log-line"><span class="log-ts">09:00:01.234</span><span class="log-lvl err"> ERR</span><span class="log-msg">Action assigned: Entry #2 &#8594; <em>Escalate to support team</em> [PRIORITY]</span></div>
+            <div class="log-line"><span class="log-ts">09:00:01.351</span><span class="log-lvl err"> ERR</span><span class="log-msg">Action assigned: Entry #3 &#8594; <em>Flag for product review</em> [PRIORITY]</span></div>
+            <div class="log-line"><span class="log-ts">09:00:01.467</span><span class="log-lvl ok">  OK</span><span class="log-msg">Action assigned: Entry #4 &#8594; <em>Log and close</em></span></div>
+            <div class="log-line"><span class="log-ts">09:00:01.584</span><span class="log-lvl err"> ERR</span><span class="log-msg">Action assigned: Entry #5 &#8594; <em>Escalate to support team</em> [PRIORITY]</span></div>
+            <div class="log-line"><span class="log-ts">09:00:01.700</span><span class="log-lvl warn">WARN</span><span class="log-msg">Action assigned: Entry #6 &#8594; <em>Flag for UX review</em></span></div>
+            <div class="log-line"><span class="log-ts">09:00:01.817</span><span class="log-lvl info">INFO</span><span class="log-msg">REPORT generated &#8212; 3 High urgency, 1 Medium, 2 Low</span></div>
+            <div class="log-line"><span class="log-ts">09:00:01.934</span><span class="log-lvl ok">  OK</span><span class="log-msg">Pipeline <strong>complete</strong> &#8212; 6/6 entries processed in 1.933s</span></div>
+          </div>
+
+          <!-- BATCH B log -->
+          <div class="batch-log batch-log-b">
+            <div class="log-line"><span class="log-ts">09:14:22.001</span><span class="log-lvl info">INFO</span><span class="log-msg">Agent pipeline <strong>initialized</strong> &#8212; Batch B (SaaS Product), 6 entries</span></div>
+            <div class="log-line"><span class="log-ts">09:14:22.189</span><span class="log-lvl info">INFO</span><span class="log-msg">Parsing feedback entries&#x2026; <em>6 lines detected</em></span></div>
+            <div class="log-line"><span class="log-ts">09:14:22.312</span><span class="log-lvl ok">  OK</span><span class="log-msg">Entry #1 &#8212; Sentiment: <strong>Positive</strong> | Topic: Onboarding | Urgency: Low</span></div>
+            <div class="log-line"><span class="log-ts">09:14:22.428</span><span class="log-lvl warn">WARN</span><span class="log-msg">Entry #2 &#8212; Sentiment: <strong>Neutral</strong> | Topic: Pricing | Urgency: Medium</span></div>
+            <div class="log-line"><span class="log-ts">09:14:22.545</span><span class="log-lvl err"> ERR</span><span class="log-msg">Entry #3 &#8212; Sentiment: <strong>Negative</strong> | Topic: Support | Urgency: <strong>HIGH</strong> &#9888;</span></div>
+            <div class="log-line"><span class="log-ts">09:14:22.661</span><span class="log-lvl ok">  OK</span><span class="log-msg">Entry #4 &#8212; Sentiment: <strong>Positive</strong> | Topic: Dashboard | Urgency: Low</span></div>
+            <div class="log-line"><span class="log-ts">09:14:22.778</span><span class="log-lvl warn">WARN</span><span class="log-msg">Entry #5 &#8212; Sentiment: <strong>Neutral</strong> | Topic: API | Urgency: Medium</span></div>
+            <div class="log-line"><span class="log-ts">09:14:22.894</span><span class="log-lvl warn">WARN</span><span class="log-msg">Entry #6 &#8212; Sentiment: <strong>Neutral</strong> | Topic: Roadmap | Urgency: Medium</span></div>
+            <div class="log-line"><span class="log-ts">09:14:23.011</span><span class="log-lvl info">INFO</span><span class="log-msg">DECIDE phase &#8212; generating action recommendations&#x2026;</span></div>
+            <div class="log-line"><span class="log-ts">09:14:23.127</span><span class="log-lvl ok">  OK</span><span class="log-msg">Action assigned: Entry #1 &#8594; <em>Send thank-you reply</em></span></div>
+            <div class="log-line"><span class="log-ts">09:14:23.244</span><span class="log-lvl warn">WARN</span><span class="log-msg">Action assigned: Entry #2 &#8594; <em>Flag for product review</em></span></div>
+            <div class="log-line"><span class="log-ts">09:14:23.360</span><span class="log-lvl err"> ERR</span><span class="log-msg">Action assigned: Entry #3 &#8594; <em>Escalate to support team</em> [PRIORITY]</span></div>
+            <div class="log-line"><span class="log-ts">09:14:23.477</span><span class="log-lvl ok">  OK</span><span class="log-msg">Action assigned: Entry #4 &#8594; <em>Log and close</em></span></div>
+            <div class="log-line"><span class="log-ts">09:14:23.593</span><span class="log-lvl warn">WARN</span><span class="log-msg">Action assigned: Entry #5 &#8594; <em>Flag for product review</em></span></div>
+            <div class="log-line"><span class="log-ts">09:14:23.710</span><span class="log-lvl warn">WARN</span><span class="log-msg">Action assigned: Entry #6 &#8594; <em>Monitor and follow up</em></span></div>
+            <div class="log-line"><span class="log-ts">09:14:23.826</span><span class="log-lvl info">INFO</span><span class="log-msg">REPORT generated &#8212; 1 High urgency, 3 Medium, 2 Low</span></div>
+            <div class="log-line"><span class="log-ts">09:14:23.943</span><span class="log-lvl ok">  OK</span><span class="log-msg">Pipeline <strong>complete</strong> &#8212; 6/6 entries processed in 1.942s</span></div>
+          </div>
+
+          <!-- BATCH C log -->
+          <div class="batch-log batch-log-c">
+            <div class="log-line"><span class="log-ts">10:31:05.001</span><span class="log-lvl info">INFO</span><span class="log-msg">Agent pipeline <strong>initialized</strong> &#8212; Batch C (Restaurant), 6 entries</span></div>
+            <div class="log-line"><span class="log-ts">10:31:05.177</span><span class="log-lvl info">INFO</span><span class="log-msg">Parsing feedback entries&#x2026; <em>6 lines detected</em></span></div>
+            <div class="log-line"><span class="log-ts">10:31:05.298</span><span class="log-lvl ok">  OK</span><span class="log-msg">Entry #1 &#8212; Sentiment: <strong>Positive</strong> | Topic: Food Quality | Urgency: Low</span></div>
+            <div class="log-line"><span class="log-ts">10:31:05.414</span><span class="log-lvl err"> ERR</span><span class="log-msg">Entry #2 &#8212; Sentiment: <strong>Negative</strong> | Topic: Wait Time | Urgency: <strong>HIGH</strong> &#9888;</span></div>
+            <div class="log-line"><span class="log-ts">10:31:05.531</span><span class="log-lvl warn">WARN</span><span class="log-msg">Entry #3 &#8212; Sentiment: <strong>Neutral</strong> | Topic: Menu | Urgency: Low</span></div>
+            <div class="log-line"><span class="log-ts">10:31:05.647</span><span class="log-lvl ok">  OK</span><span class="log-msg">Entry #4 &#8212; Sentiment: <strong>Positive</strong> | Topic: Staff | Urgency: Low</span></div>
+            <div class="log-line"><span class="log-ts">10:31:05.764</span><span class="log-lvl err"> ERR</span><span class="log-msg">Entry #5 &#8212; Sentiment: <strong>Negative</strong> | Topic: Noise | Urgency: <strong>HIGH</strong> &#9888;</span></div>
+            <div class="log-line"><span class="log-ts">10:31:05.880</span><span class="log-lvl ok">  OK</span><span class="log-msg">Entry #6 &#8212; Sentiment: <strong>Positive</strong> | Topic: Food Quality | Urgency: Low</span></div>
+            <div class="log-line"><span class="log-ts">10:31:05.997</span><span class="log-lvl info">INFO</span><span class="log-msg">DECIDE phase &#8212; generating action recommendations&#x2026;</span></div>
+            <div class="log-line"><span class="log-ts">10:31:06.113</span><span class="log-lvl ok">  OK</span><span class="log-msg">Action assigned: Entry #1 &#8594; <em>Send thank-you reply</em></span></div>
+            <div class="log-line"><span class="log-ts">10:31:06.230</span><span class="log-lvl err"> ERR</span><span class="log-msg">Action assigned: Entry #2 &#8594; <em>Escalate to management</em> [PRIORITY]</span></div>
+            <div class="log-line"><span class="log-ts">10:31:06.346</span><span class="log-lvl warn">WARN</span><span class="log-msg">Action assigned: Entry #3 &#8594; <em>Flag for menu review</em></span></div>
+            <div class="log-line"><span class="log-ts">10:31:06.463</span><span class="log-lvl ok">  OK</span><span class="log-msg">Action assigned: Entry #4 &#8594; <em>Send thank-you reply</em></span></div>
+            <div class="log-line"><span class="log-ts">10:31:06.579</span><span class="log-lvl err"> ERR</span><span class="log-msg">Action assigned: Entry #5 &#8594; <em>Flag for venue review</em> [PRIORITY]</span></div>
+            <div class="log-line"><span class="log-ts">10:31:06.696</span><span class="log-lvl ok">  OK</span><span class="log-msg">Action assigned: Entry #6 &#8594; <em>Log and close</em></span></div>
+            <div class="log-line"><span class="log-ts">10:31:06.812</span><span class="log-lvl info">INFO</span><span class="log-msg">REPORT generated &#8212; 2 High urgency, 0 Medium, 4 Low</span></div>
+            <div class="log-line"><span class="log-ts">10:31:06.929</span><span class="log-lvl ok">  OK</span><span class="log-msg">Pipeline <strong>complete</strong> &#8212; 6/6 entries processed in 1.928s</span></div>
+          </div>
+
+          <!-- Log stats footer -->
+          <div class="log-summary" aria-label="Session log summary statistics">
+            <div class="log-stat">
+              <span class="log-stat-val">6</span>
+              <span class="log-stat-lbl">Entries Processed</span>
+            </div>
+            <div class="log-stat">
+              <span class="log-stat-val">18</span>
+              <span class="log-stat-lbl">Log Lines Written</span>
+            </div>
+            <div class="log-stat">
+              <span class="log-stat-val">1.93s</span>
+              <span class="log-stat-lbl">Pipeline Duration</span>
+            </div>
+            <div class="log-stat">
+              <span class="log-stat-val" style="color:var(--color-agent-green)">100%</span>
+              <span class="log-stat-lbl">Success Rate</span>
+            </div>
+          </div>
+        </div><!-- /log-wrap -->
+
+        <div class="nav-row">
+          <label class="btn-back" for="step-report" tabindex="0"
+                 style="background:var(--color-agent-surface);border-color:var(--color-agent-border);color:var(--color-agent-text);"
+                 aria-label="Go back to Report step">&#8592; Back</label>
+          <label class="btn-next" for="step-input" tabindex="0" aria-label="Start over with a new batch">&#8635; New Batch</label>
+        </div>
+      </div>
+    </div><!-- /stage-log -->
+
+  </div><!-- /.page-wrapper -->
+
+  <footer class="app-footer" role="contentinfo">
+    &copy; 2025 Feedback Sentinel &mdash; AI Agent Pipeline Demo &middot; Pure HTML &amp; CSS
+  </footer>
+
+</body>
+</html>
