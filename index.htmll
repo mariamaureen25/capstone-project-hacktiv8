@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Feedback Sentinel — analyze customer feedback for sentiment, key topics, confidence scores, and actionable summaries." />
+  <title>Feedback Sentinel — Customer Sentiment Analyzer</title>
+  <style>
+    /* =====================================================================
+       1. DESIGN TOKENS
+       ===================================================================== */
+    :root {
+      --color-bg:               #f8f9fa;
+      --color-surface:          #ffffff;
+      --color-border:           #dee2e6;
+      --color-border-focus:     #0d6efd;
+      --color-text-primary:     #212529;
+      --color-text-secondary:   #6c757d;
+      --color-text-inverse:     #ffffff;
+      --color-positive:         #198754;
+      --color-positive-bg:      #d1e7dd;
+      --color-positive-text:    #0a3622;
+      --color-neutral:          #b45309;
+      --color-neutral-bg:       #fef3c7;
+      --color-neutral-text:     #451a03;
+      --color-negative:         #dc3545;
+      --color-negative-bg:      #f8d7da;
+      --color-negative-text:    #58151c;
+      --color-accent:           #0d6efd;
+      --color-accent-hover:     #0b5ed7;
+      --color-accent-active:    #0a58ca;
+      --color-row-stripe:       #f1f3f5;
+      --color-row-hover:        #e9ecef;
+      --color-skip-bg:          #0d6efd;
+
+      --font-stack: -apple-system, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+      --font-mono:  ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+      --radius-sm:  4px;
+      --radius:     8px;
+      --radius-lg:  12px;
+      --radius-pill: 999px;
+
+      --shadow-sm:  0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+      --shadow:     0 2px 8px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.06);
+
+      --space-xs:   4px;
+      --space-sm:   8px;
+      --space-md:   16px;
+      --space-lg:   24px;
+      --space-xl:   32px;
+      --space-2xl:  48px;
+
+      --transition-fast: 0.15s ease;
+      --transition:      0.25s ease;
+    }
+
+    /* =====================================================================
+       2. RESET & BASE
+       ===================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-stack);
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--color-text-primary);
+      background: var(--color-bg);
+      min-height: 100vh;
+    }
+
+    h1, h2, h3, h4 {
+      line-height: 1.3;
+      font-weight: 600;
+      color: var(--color-text-primary);
+    }
+
+    p { margin: 0; }
+
+    ul, ol { list-style: none; }
+
+    img, svg { display: block; max-width: 100%; }
+
+    button, input, select, textarea {
+      font: inherit;
+      color: inherit;
+    }
+
+    a {
+      color: var(--color-accent);
+      text-decoration: none;
+    }
+
+    a:hover { text-decoration: underline; }
+
+    /* =====================================================================
+       3. SKIP LINK
+       ===================================================================== */
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: var(--space-md);
+      background: var(--color-skip-bg);
+      color: var(--color-text-inverse);
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--radius);
+      font-weight: 600;
+      z-index: 1000;
+      transition: top var(--transition-fast);
+    }
+
+    .skip-link:focus {
+      top: var(--space-sm);
+    }
+
+    /* =====================================================================
+       4. HIDDEN RADIO STATE CONTROLLERS
+       ===================================================================== */
+    .state-radio {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      width: 0;
+      height: 0;
+    }
+
+    /* =====================================================================
+       5. HEADER / NAV
+       ===================================================================== */
+    .app-header {
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: var(--space-md) var(--space-xl);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+    }
+
+    .app-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      text-decoration: none;
+    }
+
+    .app-logo-icon {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+    }
+
+    .app-logo-text {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .app-logo-text span {
+      color: var(--color-accent);
+    }
+
+    .app-nav {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xl);
+    }
+
+    .nav-link {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      padding: var(--space-xs) 0;
+      border-bottom: 2px solid transparent;
+      transition: color var(--transition-fast), border-color var(--transition-fast);
+    }
+
+    .nav-link:hover,
+    .nav-link.active {
+      color: var(--color-accent);
+      border-bottom-color: var(--color-accent);
+      text-decoration: none;
+    }
+
+    .nav-link:focus-visible {
+      outline: 2px solid var(--color-border-focus);
+      outline-offset: 2px;
+      border-radius: var(--radius-sm);
+    }
+
+    .nav-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-accent);
+      color: var(--color-text-inverse);
+      font-size: 0.7rem;
+      font-weight: 700;
+      border-radius: var(--radius-pill);
+      padding: 1px 6px;
+      margin-left: var(--space-xs);
+      vertical-align: middle;
+    }
+
+    /* =====================================================================
+       6. PAGE WRAPPER & MAIN LAYOUT
+       ===================================================================== */
+    .page-wrapper {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: var(--space-xl) var(--space-xl) var(--space-2xl);
+    }
+
+    .page-intro {
+      margin-bottom: var(--space-xl);
+    }
+
+    .page-intro h1 {
+      font-size: 1.5rem;
+      margin-bottom: var(--space-xs);
+    }
+
+    .page-intro p {
+      color: var(--color-text-secondary);
+      font-size: 0.9375rem;
+    }
+
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-lg);
+      align-items: start;
+      margin-bottom: var(--space-lg);
+    }
+
+    /* =====================================================================
+       7. PANEL BASE
+       ===================================================================== */
+    .panel {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-lg);
+      padding-bottom: var(--space-md);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .panel-icon {
+      width: 20px;
+      height: 20px;
+      color: var(--color-accent);
+      flex-shrink: 0;
+    }
+
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    /* =====================================================================
+       8. INPUT SECTION
+       ===================================================================== */
+    .form-group {
+      margin-bottom: var(--space-lg);
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin-bottom: var(--space-sm);
+    }
+
+    .form-label .required {
+      color: var(--color-negative);
+      margin-left: 2px;
+    }
+
+    .form-textarea {
+      width: 100%;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: var(--space-md);
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      resize: vertical;
+      min-height: 140px;
+      background: var(--color-surface);
+      color: var(--color-text-primary);
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .form-textarea::placeholder {
+      color: var(--color-text-secondary);
+    }
+
+    .form-textarea:hover {
+      border-color: #adb5bd;
+    }
+
+    .form-textarea:focus {
+      outline: none;
+      border-color: var(--color-border-focus);
+      box-shadow: 0 0 0 3px rgba(13,110,253,0.18);
+    }
+
+    .form-hint {
+      margin-top: var(--space-xs);
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary);
+    }
+
+    /* Category radio pills */
+    .category-fieldset {
+      border: none;
+    }
+
+    .category-legend {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin-bottom: var(--space-sm);
+      float: left;
+      width: 100%;
+    }
+
+    .category-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+
+    .category-options input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+
+    .category-options label {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-xs) var(--space-md);
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      background: var(--color-surface);
+      cursor: pointer;
+      transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+      user-select: none;
+    }
+
+    .category-options label:hover {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+      background: rgba(13,110,253,0.05);
+    }
+
+    .category-options input[type="radio"]:checked + label {
+      border-color: var(--color-accent);
+      background: var(--color-accent);
+      color: var(--color-text-inverse);
+    }
+
+    .category-options input[type="radio"]:focus-visible + label {
+      outline: 2px solid var(--color-border-focus);
+      outline-offset: 2px;
+    }
+
+    /* Demo trigger labels */
+    .demo-triggers {
+      margin-top: var(--space-lg);
+      padding-top: var(--space-lg);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .demo-triggers-label {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: var(--space-sm);
+    }
+
+    .demo-trigger-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+
+    .demo-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-xs) var(--space-md);
+      border-radius: var(--radius-pill);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid;
+      transition: opacity var(--transition-fast), transform var(--transition-fast);
+      user-select: none;
+    }
+
+    .demo-trigger:hover { opacity: 0.85; }
+    .demo-trigger:active { transform: translateY(1px); }
+
+    .demo-trigger.positive {
+      background: var(--color-positive-bg);
+      color: var(--color-positive-text);
+      border-color: var(--color-positive);
+    }
+
+    .demo-trigger.neutral {
+      background: var(--color-neutral-bg);
+      color: var(--color-neutral-text);
+      border-color: var(--color-neutral);
+    }
+
+    .demo-trigger.negative {
+      background: var(--color-negative-bg);
+      color: var(--color-negative-text);
+      border-color: var(--color-negative);
+    }
+
+    .demo-trigger:focus-visible {
+      outline: 2px solid var(--color-border-focus);
+      outline-offset: 2px;
+    }
+
+    /* Submit button */
+    .btn-analyze {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      width: 100%;
+      padding: 12px var(--space-lg);
+      background: var(--color-accent);
+      color: var(--color-text-inverse);
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+      margin-top: var(--space-lg);
+    }
+
+    .btn-analyze:hover {
+      background: var(--color-accent-hover);
+      box-shadow: 0 4px 12px rgba(13,110,253,0.3);
+    }
+
+    .btn-analyze:active {
+      background: var(--color-accent-active);
+      transform: translateY(1px);
+      box-shadow: none;
+    }
+
+    .btn-analyze:focus-visible {
+      outline: 2px solid var(--color-border-focus);
+      outline-offset: 3px;
+    }
+
+    /* =====================================================================
+       9. RESULTS SECTION
+       ===================================================================== */
+    .results-panel {
+      min-height: 420px;
+    }
+
+    /* Empty state */
+    .result-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 280px;
+      gap: var(--space-md);
+      color: var(--color-text-secondary);
+      text-align: center;
+    }
+
+    .result-empty-icon {
+      width: 48px;
+      height: 48px;
+      opacity: 0.35;
+    }
+
+    .result-empty p {
+      font-size: 0.9375rem;
+      max-width: 220px;
+      line-height: 1.5;
+    }
+
+    /* Result card */
+    .result-card {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Sentiment badge */
+    .sentiment-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-lg);
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+
+    .sentiment-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-xs) var(--space-md);
+      border-radius: var(--radius-pill);
+      font-size: 0.8125rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .sentiment-badge.positive {
+      background: var(--color-positive-bg);
+      color: var(--color-positive-text);
+    }
+
+    .sentiment-badge.neutral {
+      background: var(--color-neutral-bg);
+      color: var(--color-neutral-text);
+    }
+
+    .sentiment-badge.negative {
+      background: var(--color-negative-bg);
+      color: var(--color-negative-text);
+    }
+
+    .sentiment-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .positive .sentiment-dot  { background: var(--color-positive); }
+    .neutral  .sentiment-dot  { background: var(--color-neutral); }
+    .negative .sentiment-dot  { background: var(--color-negative); }
+
+    .result-scenario {
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary);
+      font-style: italic;
+    }
+
+    /* Confidence score */
+    .result-section {
+      margin-bottom: var(--space-lg);
+    }
+
+    .result-section-label {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-secondary);
+      margin-bottom: var(--space-sm);
+    }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .score-bar {
+      flex: 1;
+      height: 10px;
+      background: var(--color-border);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: var(--radius-pill);
+      transition: width 0.5s ease;
+    }
+
+    .positive .score-fill  { background: var(--color-positive); }
+    .neutral  .score-fill  { background: var(--color-neutral); }
+    .negative .score-fill  { background: var(--color-negative); }
+
+    .score-value {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      min-width: 38px;
+      text-align: right;
+    }
+
+    .positive .score-value  { color: var(--color-positive); }
+    .neutral  .score-value  { color: var(--color-neutral); }
+    .negative .score-value  { color: var(--color-negative); }
+
+    /* Key topics */
+    .topics-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+
+    .topic-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--color-text-primary);
+    }
+
+    .topic-pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-accent);
+      flex-shrink: 0;
+    }
+
+    /* Analysis summary */
+    .summary-text {
+      font-size: 0.9375rem;
+      line-height: 1.7;
+      color: var(--color-text-primary);
+      background: var(--color-bg);
+      border-left: 3px solid var(--color-border);
+      padding: var(--space-md);
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+
+    /* =====================================================================
+       10. CSS STATE MACHINE — :checked sibling selectors
+       ===================================================================== */
+
+    /* Show correct result card */
+    #state-positive:checked ~ .page-wrapper .result-card[data-state="positive"],
+    #state-neutral:checked  ~ .page-wrapper .result-card[data-state="neutral"],
+    #state-negative:checked ~ .page-wrapper .result-card[data-state="negative"] {
+      display: block;
+    }
+
+    /* Hide empty state when any result is active */
+    #state-positive:checked ~ .page-wrapper .result-empty,
+    #state-neutral:checked  ~ .page-wrapper .result-empty,
+    #state-negative:checked ~ .page-wrapper .result-empty {
+      display: none;
+    }
+
+    /* Highlight active demo trigger */
+    #state-positive:checked ~ .page-wrapper .demo-trigger.positive,
+    #state-neutral:checked  ~ .page-wrapper .demo-trigger.neutral,
+    #state-negative:checked ~ .page-wrapper .demo-trigger.negative {
+      box-shadow: 0 0 0 3px rgba(13,110,253,0.25);
+    }
+
+    /* Pre-fill textarea content when a demo is active */
+    #state-positive:checked ~ .page-wrapper .demo-text-positive,
+    #state-neutral:checked  ~ .page-wrapper .demo-text-neutral,
+    #state-negative:checked ~ .page-wrapper .demo-text-negative {
+      display: block;
+    }
+
+    .demo-text-positive,
+    .demo-text-neutral,
+    .demo-text-negative {
+      display: none;
+      font-size: 0.875rem;
+      color: var(--color-text-secondary);
+      background: var(--color-bg);
+      border: 1px dashed var(--color-border);
+      border-radius: var(--radius);
+      padding: var(--space-md);
+      margin-top: var(--space-sm);
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    /* =====================================================================
+       11. HISTORY SECTION
+       ===================================================================== */
+    .history-section {
+      margin-top: var(--space-sm);
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-lg);
+      padding-bottom: var(--space-md);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .history-title-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .history-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--color-text-secondary);
+      padding: 1px 8px;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--color-border);
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .history-table thead tr {
+      background: var(--color-bg);
+    }
+
+    .history-table th {
+      padding: 10px var(--space-md);
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-secondary);
+      border-bottom: 1px solid var(--color-border);
+      white-space: nowrap;
+    }
+
+    .history-table td {
+      padding: 12px var(--space-md);
+      border-bottom: 1px solid var(--color-border);
+      vertical-align: middle;
+      color: var(--color-text-primary);
+    }
+
+    .history-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .history-table tbody tr:nth-child(even) {
+      background: var(--color-row-stripe);
+    }
+
+    .history-table tbody tr:hover {
+      background: var(--color-row-hover);
+    }
+
+    .td-date {
+      white-space: nowrap;
+      color: var(--color-text-secondary);
+      font-size: 0.8125rem;
+    }
+
+    .td-category {
+      white-space: nowrap;
+    }
+
+    .category-tag {
+      display: inline-block;
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 1px 7px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+    }
+
+    .td-feedback {
+      max-width: 300px;
+    }
+
+    .feedback-preview {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      color: var(--color-text-primary);
+    }
+
+    .td-confidence {
+      white-space: nowrap;
+    }
+
+    .mini-score-wrap {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .mini-bar {
+      width: 60px;
+      height: 6px;
+      background: var(--color-border);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .mini-fill {
+      height: 100%;
+      border-radius: var(--radius-pill);
+    }
+
+    .mini-fill.positive { background: var(--color-positive); }
+    .mini-fill.neutral  { background: var(--color-neutral); }
+    .mini-fill.negative { background: var(--color-negative); }
+
+    .mini-pct {
+      font-size: 0.8125rem;
+      font-weight: 600;
+    }
+
+    .mini-pct.positive { color: var(--color-positive); }
+    .mini-pct.neutral  { color: var(--color-neutral); }
+    .mini-pct.negative { color: var(--color-negative); }
+
+    /* =====================================================================
+       12. FOOTER
+       ===================================================================== */
+    .app-footer {
+      margin-top: var(--space-2xl);
+      padding: var(--space-lg) var(--space-xl);
+      border-top: 1px solid var(--color-border);
+      text-align: center;
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary);
+    }
+
+    /* =====================================================================
+       13. RESPONSIVE
+       ===================================================================== */
+    @media (max-width: 900px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .results-panel {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .header-inner {
+        padding: var(--space-md);
+      }
+
+      .app-nav {
+        gap: var(--space-md);
+      }
+
+      .page-wrapper {
+        padding: var(--space-lg) var(--space-md) var(--space-2xl);
+      }
+
+      .page-intro h1 {
+        font-size: 1.25rem;
+      }
+
+      .panel {
+        padding: var(--space-md);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .app-logo-text {
+        font-size: 1rem;
+      }
+
+      .nav-link {
+        font-size: 0.8125rem;
+      }
+
+      .page-intro h1 {
+        font-size: 1.125rem;
+      }
+
+      .panel-title {
+        font-size: 0.9375rem;
+      }
+
+      .demo-trigger-row {
+        flex-direction: column;
+      }
+
+      .demo-trigger {
+        justify-content: center;
+      }
+    }
+
+    /* =====================================================================
+       14. FOCUS VISIBLE GLOBAL
+       ===================================================================== */
+    :focus-visible {
+      outline: 2px solid var(--color-border-focus);
+      outline-offset: 2px;
+    }
+
+    /* Remove default focus for mouse users on elements that set custom styles */
+    .btn-analyze:focus:not(:focus-visible),
+    .demo-trigger:focus:not(:focus-visible) {
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Skip link -->
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <!-- ================================================================
+       STATE CONTROLLERS (hidden radio inputs — must be first in body)
+       ================================================================ -->
+  <input class="state-radio" type="radio" name="result-state" id="state-positive" />
+  <input class="state-radio" type="radio" name="result-state" id="state-neutral" />
+  <input class="state-radio" type="radio" name="result-state" id="state-negative" />
+
+  <!-- ================================================================
+       HEADER
+       ================================================================ -->
+  <header class="app-header" role="banner">
+    <div class="header-inner">
+      <a class="app-logo" href="#" aria-label="Feedback Sentinel home">
+        <svg class="app-logo-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="8" fill="#0d6efd"/>
+          <path d="M8 22 Q10 14 16 10 Q22 14 24 22" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <circle cx="16" cy="10" r="2.5" fill="white"/>
+          <path d="M12 22 Q14 18 16 17 Q18 18 20 22" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <line x1="8" y1="23" x2="24" y2="23" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span class="app-logo-text">Feedback <span>Sentinel</span></span>
+      </a>
+      <nav class="app-nav" aria-label="Primary navigation">
+        <a class="nav-link active" href="#main-content">Dashboard</a>
+        <a class="nav-link" href="#history">History <span class="nav-badge" aria-label="8 entries">8</span></a>
+        <a class="nav-link" href="#">Reports</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ================================================================
+       MAIN
+       ================================================================ -->
+  <div class="page-wrapper">
+
+    <div class="page-intro" id="main-content">
+      <h1>Customer Feedback Dashboard</h1>
+      <p>Submit customer feedback below to classify sentiment, extract key topics, and generate an analysis summary.</p>
+    </div>
+
+    <main class="main-layout" aria-label="Analysis workspace">
+
+      <!-- ============================================================
+           LEFT PANEL — Input Section
+           ============================================================ -->
+      <section class="panel" aria-labelledby="input-panel-title">
+        <div class="panel-header">
+          <svg class="panel-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 4h14M3 8h10M3 12h7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+            <circle cx="15.5" cy="14.5" r="3" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M17.5 16.5l1.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <h2 class="panel-title" id="input-panel-title">Analyze Feedback</h2>
+        </div>
+
+        <form method="post" action="#" aria-label="Feedback submission form">
+
+          <div class="form-group">
+            <label class="form-label" for="feedback-text">
+              Customer Feedback <span class="required" aria-label="required">*</span>
+            </label>
+            <textarea
+              class="form-textarea"
+              id="feedback-text"
+              name="feedback"
+              rows="6"
+              placeholder="Paste or type the customer's feedback here…"
+              aria-describedby="feedback-hint"
+              required
+            ></textarea>
+            <p class="form-hint" id="feedback-hint">Minimum 20 characters. Supports English text.</p>
+          </div>
+
+          <div class="form-group">
+            <fieldset class="category-fieldset">
+              <legend class="category-legend">Feedback Category</legend>
+              <div class="category-options">
+
+                <input type="radio" id="cat-product"  name="category" value="product"  />
+                <label for="cat-product">&#128230; Product</label>
+
+                <input type="radio" id="cat-service"  name="category" value="service"  />
+                <label for="cat-service">&#128101; Service</label>
+
+                <input type="radio" id="cat-delivery" name="category" value="delivery" />
+                <label for="cat-delivery">&#128666; Delivery</label>
+
+                <input type="radio" id="cat-other"    name="category" value="other"    />
+                <label for="cat-other">&#128196; Other</label>
+
+              </div>
+            </fieldset>
+          </div>
+
+          <button class="btn-analyze" type="submit" aria-label="Analyze the submitted feedback">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="8" cy="8" r="6.5" stroke="white" stroke-width="1.5"/>
+              <path d="M5 8l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Analyze Feedback
+          </button>
+
+        </form>
+
+        <!-- Demo triggers -->
+        <div class="demo-triggers" aria-label="Load a demo scenario">
+          <p class="demo-triggers-label">&#9654; Try a demo scenario</p>
+          <div class="demo-trigger-row">
+            <label class="demo-trigger positive" for="state-positive" tabindex="0" role="button"
+                   aria-label="Load positive product review demo">
+              &#10003; Positive — Product Review
+            </label>
+            <label class="demo-trigger neutral" for="state-neutral" tabindex="0" role="button"
+                   aria-label="Load neutral inquiry demo">
+              &#9644; Neutral — General Inquiry
+            </label>
+            <label class="demo-trigger negative" for="state-negative" tabindex="0" role="button"
+                   aria-label="Load negative delivery complaint demo">
+              &#10007; Negative — Delivery Complaint
+            </label>
+          </div>
+        </div>
+
+        <!-- Demo scenario preview text (shown under triggers) -->
+        <div class="demo-text-positive" aria-live="polite">
+          &ldquo;I recently purchased the wireless noise-cancelling headphones and I am genuinely
+          impressed. The sound quality is exceptional, the build feels premium, and battery life
+          easily lasts a full work day. Setup was effortless. Best purchase I&rsquo;ve made this
+          year — highly recommend!&rdquo;
+        </div>
+        <div class="demo-text-neutral" aria-live="polite">
+          &ldquo;I have a question about your subscription plan. I&rsquo;ve been a customer for
+          about six months and I&rsquo;m not entirely sure what features are included at my current
+          tier. The website is informative but I couldn&rsquo;t find a clear comparison table.
+          Could someone clarify what I get vs. the premium plan?&rdquo;
+        </div>
+        <div class="demo-text-negative" aria-live="polite">
+          &ldquo;My order arrived four days late with no communication whatsoever. The packaging
+          was damaged and one item was missing. I contacted support twice and still haven&rsquo;t
+          received a resolution. This is completely unacceptable and I&rsquo;m seriously
+          considering cancelling my account.&rdquo;
+        </div>
+
+      </section>
+
+      <!-- ============================================================
+           RIGHT PANEL — Results Section
+           ============================================================ -->
+      <section class="panel results-panel" aria-labelledby="results-panel-title" aria-live="polite">
+        <div class="panel-header">
+          <svg class="panel-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 15l4-4 3 3 4-5 3 3" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="2" y="2" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <h2 class="panel-title" id="results-panel-title">Analysis Results</h2>
+        </div>
+
+        <!-- Empty state -->
+        <div class="result-empty" role="status" aria-label="No analysis yet">
+          <svg class="result-empty-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="24" cy="24" r="20" stroke="#6c757d" stroke-width="2"/>
+            <path d="M16 24h16M24 16v16" stroke="#6c757d" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <p>Select a demo scenario or submit feedback to see the sentiment analysis.</p>
+        </div>
+
+        <!-- ── RESULT CARD: POSITIVE ────────────────────────────── -->
+        <div class="result-card positive" data-state="positive" role="region" aria-label="Positive sentiment analysis result">
+
+          <div class="sentiment-row">
+            <span class="sentiment-badge positive">
+              <span class="sentiment-dot" aria-hidden="true"></span>
+              Positive
+            </span>
+            <span class="result-scenario">Product Review</span>
+          </div>
+
+          <div class="result-section">
+            <p class="result-section-label">Confidence Score</p>
+            <div class="score-row positive">
+              <div class="score-bar" role="progressbar" aria-valuenow="92" aria-valuemin="0" aria-valuemax="100" aria-label="Confidence 92%">
+                <div class="score-fill" style="width: 92%;"></div>
+              </div>
+              <span class="score-value">92%</span>
+            </div>
+          </div>
+
+          <div class="result-section">
+            <p class="result-section-label">Key Topics</p>
+            <ul class="topics-list" aria-label="Extracted key topics">
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Sound Quality</span></li>
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Build Quality</span></li>
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Battery Life</span></li>
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Setup Experience</span></li>
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Product Recommendation</span></li>
+            </ul>
+          </div>
+
+          <div class="result-section">
+            <p class="result-section-label">Analysis Summary</p>
+            <p class="summary-text">
+              The customer expresses strong satisfaction with the wireless headphones, highlighting
+              exceptional sound quality, premium build, and impressive battery performance as
+              primary drivers. The seamless setup experience reinforces a smooth end-to-end
+              product journey. The closing recommendation signals high advocacy intent — this
+              customer is a strong candidate for loyalty and referral programs.
+            </p>
+          </div>
+
+        </div>
+
+        <!-- ── RESULT CARD: NEUTRAL ─────────────────────────────── -->
+        <div class="result-card neutral" data-state="neutral" role="region" aria-label="Neutral sentiment analysis result">
+
+          <div class="sentiment-row">
+            <span class="sentiment-badge neutral">
+              <span class="sentiment-dot" aria-hidden="true"></span>
+              Neutral
+            </span>
+            <span class="result-scenario">General Inquiry</span>
+          </div>
+
+          <div class="result-section">
+            <p class="result-section-label">Confidence Score</p>
+            <div class="score-row neutral">
+              <div class="score-bar" role="progressbar" aria-valuenow="76" aria-valuemin="0" aria-valuemax="100" aria-label="Confidence 76%">
+                <div class="score-fill" style="width: 76%;"></div>
+              </div>
+              <span class="score-value">76%</span>
+            </div>
+          </div>
+
+          <div class="result-section">
+            <p class="result-section-label">Key Topics</p>
+            <ul class="topics-list" aria-label="Extracted key topics">
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Subscription Plan</span></li>
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Feature Clarity</span></li>
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Pricing Tiers</span></li>
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Website Navigation</span></li>
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Support Request</span></li>
+            </ul>
+          </div>
+
+          <div class="result-section">
+            <p class="result-section-label">Analysis Summary</p>
+            <p class="summary-text">
+              The message is informational and non-emotional — the customer is neither satisfied
+              nor dissatisfied, but is experiencing friction around subscription plan transparency.
+              The absence of a clear feature comparison page on the website is the root cause of
+              this inquiry. Recommended action: direct the customer to a dedicated plan comparison
+              resource and consider improving website information architecture to reduce similar
+              queries.
+            </p>
+          </div>
+
+        </div>
+
+        <!-- ── RESULT CARD: NEGATIVE ────────────────────────────── -->
+        <div class="result-card negative" data-state="negative" role="region" aria-label="Negative sentiment analysis result">
+
+          <div class="sentiment-row">
+            <span class="sentiment-badge negative">
+              <span class="sentiment-dot" aria-hidden="true"></span>
+              Negative
+            </span>
+            <span class="result-scenario">Delivery Complaint</span>
+          </div>
+
+          <div class="result-section">
+            <p class="result-section-label">Confidence Score</p>
+            <div class="score-row negative">
+              <div class="score-bar" role="progressbar" aria-valuenow="95" aria-valuemin="0" aria-valuemax="100" aria-label="Confidence 95%">
+                <div class="score-fill" style="width: 95%;"></div>
+              </div>
+              <span class="score-value">95%</span>
+            </div>
+          </div>
+
+          <div class="result-section">
+            <p class="result-section-label">Key Topics</p>
+            <ul class="topics-list" aria-label="Extracted key topics">
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Late Delivery</span></li>
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Damaged Packaging</span></li>
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Missing Item</span></li>
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Support Unresponsiveness</span></li>
+              <li><span class="topic-pill"><span class="topic-pill-dot" aria-hidden="true"></span>Churn Risk</span></li>
+            </ul>
+          </div>
+
+          <div class="result-section">
+            <p class="result-section-label">Analysis Summary</p>
+            <p class="summary-text">
+              The customer is experiencing significant frustration across multiple failure points:
+              a four-day delay without proactive communication, physical damage to shipment, a
+              missing item, and two unresolved support interactions. The explicit mention of
+              account cancellation elevates this to a high-priority churn risk. Immediate
+              escalation is recommended — assign a dedicated support agent, offer a replacement
+              or full refund, and follow up with a formal apology within 24 hours.
+            </p>
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- ================================================================
+         HISTORY SECTION
+         ================================================================ -->
+    <section class="panel history-section" id="history" aria-labelledby="history-title">
+      <div class="history-header">
+        <div class="history-title-row">
+          <svg class="panel-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M7 7h6M7 10h6M7 13h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <h2 class="panel-title" id="history-title">Feedback History</h2>
+          <span class="history-count" aria-label="8 history entries">8</span>
+        </div>
+      </div>
+
+      <div class="table-scroll" role="region" aria-label="Feedback history table" tabindex="0">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Category</th>
+              <th scope="col">Feedback Preview</th>
+              <th scope="col">Sentiment</th>
+              <th scope="col">Confidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="td-date">14 Jul 2025</td>
+              <td class="td-category"><span class="category-tag">Product</span></td>
+              <td class="td-feedback"><span class="feedback-preview">I recently purchased the wireless noise-cancelling headphones and I am genuinely impressed. The sound quality is exceptional…</span></td>
+              <td><span class="sentiment-badge positive"><span class="sentiment-dot" aria-hidden="true"></span>Positive</span></td>
+              <td class="td-confidence">
+                <div class="mini-score-wrap">
+                  <div class="mini-bar"><div class="mini-fill positive" style="width:92%"></div></div>
+                  <span class="mini-pct positive">92%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-date">13 Jul 2025</td>
+              <td class="td-category"><span class="category-tag">Service</span></td>
+              <td class="td-feedback"><span class="feedback-preview">I have a question about your subscription plan. I've been a customer for six months and I'm not entirely sure what features…</span></td>
+              <td><span class="sentiment-badge neutral"><span class="sentiment-dot" aria-hidden="true"></span>Neutral</span></td>
+              <td class="td-confidence">
+                <div class="mini-score-wrap">
+                  <div class="mini-bar"><div class="mini-fill neutral" style="width:76%"></div></div>
+                  <span class="mini-pct neutral">76%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-date">12 Jul 2025</td>
+              <td class="td-category"><span class="category-tag">Delivery</span></td>
+              <td class="td-feedback"><span class="feedback-preview">My order arrived four days late with no communication whatsoever. The packaging was damaged and one item was missing…</span></td>
+              <td><span class="sentiment-badge negative"><span class="sentiment-dot" aria-hidden="true"></span>Negative</span></td>
+              <td class="td-confidence">
+                <div class="mini-score-wrap">
+                  <div class="mini-bar"><div class="mini-fill negative" style="width:95%"></div></div>
+                  <span class="mini-pct negative">95%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-date">11 Jul 2025</td>
+              <td class="td-category"><span class="category-tag">Product</span></td>
+              <td class="td-feedback"><span class="feedback-preview">The new ergonomic keyboard is a game-changer for my workflow. Typing feels natural and the backlighting is gorgeous…</span></td>
+              <td><span class="sentiment-badge positive"><span class="sentiment-dot" aria-hidden="true"></span>Positive</span></td>
+              <td class="td-confidence">
+                <div class="mini-score-wrap">
+                  <div class="mini-bar"><div class="mini-fill positive" style="width:88%"></div></div>
+                  <span class="mini-pct positive">88%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-date">10 Jul 2025</td>
+              <td class="td-category"><span class="category-tag">Service</span></td>
+              <td class="td-feedback"><span class="feedback-preview">Your refund policy page says 30 days but the confirmation email says 14 days. Can you clarify which is correct?</span></td>
+              <td><span class="sentiment-badge neutral"><span class="sentiment-dot" aria-hidden="true"></span>Neutral</span></td>
+              <td class="td-confidence">
+                <div class="mini-score-wrap">
+                  <div class="mini-bar"><div class="mini-fill neutral" style="width:81%"></div></div>
+                  <span class="mini-pct neutral">81%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-date">09 Jul 2025</td>
+              <td class="td-category"><span class="category-tag">Delivery</span></td>
+              <td class="td-feedback"><span class="feedback-preview">Ordered express shipping and the parcel sat in a warehouse for three days. Driver never attempted delivery and no card was left…</span></td>
+              <td><span class="sentiment-badge negative"><span class="sentiment-dot" aria-hidden="true"></span>Negative</span></td>
+              <td class="td-confidence">
+                <div class="mini-score-wrap">
+                  <div class="mini-bar"><div class="mini-fill negative" style="width:91%"></div></div>
+                  <span class="mini-pct negative">91%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-date">08 Jul 2025</td>
+              <td class="td-category"><span class="category-tag">Product</span></td>
+              <td class="td-feedback"><span class="feedback-preview">The smart home hub works well overall. Integration with my existing devices was a bit slow to configure but once done it's reliable…</span></td>
+              <td><span class="sentiment-badge positive"><span class="sentiment-dot" aria-hidden="true"></span>Positive</span></td>
+              <td class="td-confidence">
+                <div class="mini-score-wrap">
+                  <div class="mini-bar"><div class="mini-fill positive" style="width:68%"></div></div>
+                  <span class="mini-pct positive">68%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-date">07 Jul 2025</td>
+              <td class="td-category"><span class="category-tag">Other</span></td>
+              <td class="td-feedback"><span class="feedback-preview">Just wanted to let you know your new website redesign looks much cleaner. Easier to find what I need. No complaints at all…</span></td>
+              <td><span class="sentiment-badge positive"><span class="sentiment-dot" aria-hidden="true"></span>Positive</span></td>
+              <td class="td-confidence">
+                <div class="mini-score-wrap">
+                  <div class="mini-bar"><div class="mini-fill positive" style="width:84%"></div></div>
+                  <span class="mini-pct positive">84%</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div><!-- /.page-wrapper -->
+
+  <!-- ================================================================
+       FOOTER
+       ================================================================ -->
+  <footer class="app-footer" role="contentinfo">
+    &copy; 2025 Feedback Sentinel &mdash; Customer Sentiment Analyzer &middot; Pure HTML &amp; CSS
+  </footer>
+
+</body>
+</html>
